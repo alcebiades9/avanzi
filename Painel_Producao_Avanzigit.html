@@ -286,7 +286,15 @@
     <div class="section">
       <div class="section-head">
         <h3>Plano da semana</h3>
-        <span class="note">MRP &middot; atualize toda semana na planilha</span>
+        <div style="display:flex;align-items:center;gap:16px;">
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);">
+            <span style="width:10px;height:10px;border-radius:50%;background:#2a9d5c;display:inline-block;flex-shrink:0;"></span> Finalizado
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);">
+            <span style="width:10px;height:10px;border-radius:50%;background:#e07b00;display:inline-block;flex-shrink:0;"></span> Em andamento
+          </div>
+          <span class="note">MRP &middot; atualize toda semana na planilha</span>
+        </div>
       </div>
       <div id="weekPlan"></div>
     </div>
@@ -448,7 +456,7 @@ function processWorkbook(wb){
   renderReactors(crpSheet, allRows);
 
   const mrpSheet = findSheet(wb, /mrp/i);
-  renderWeekPlan(mrpSheet);
+  renderWeekPlan(mrpSheet, allRows);
   renderMateriasPrimas(mrpSheet);
 
   const mediaSheet = findSheet(wb, /^média$|^media$/i);
@@ -779,7 +787,7 @@ function renderMateriasPrimas(mrpSheet){
   }).join('');
 }
 
-function renderWeekPlan(mrpSheet){
+function renderWeekPlan(mrpSheet, allRows){
   const el = document.getElementById('weekPlan');
   if(!mrpSheet){ el.innerHTML = '<p style="color:var(--ink-soft);font-size:14px;">Aba MRP não encontrada.</p>'; return; }
 
@@ -802,14 +810,32 @@ function renderWeekPlan(mrpSheet){
 
   if(!items.length){ el.innerHTML = '<p style="color:var(--ink-soft);font-size:14px;">Nenhum produto planejado essa semana.</p>'; return; }
 
+  const statusMap = {};
+  if(allRows){
+    allRows.forEach(r => {
+      const st = (r['Status']||'').toString().trim().toUpperCase();
+      const p = (r['PRODUTO']||'').toString().trim().toLowerCase();
+      if(!p) return;
+      if(st === 'EM ANDAMENTO' || st === 'PARADO!') statusMap[p] = 'active';
+      else if(st === 'FINALIZADO' && statusMap[p] !== 'active') statusMap[p] = 'done';
+    });
+  }
+
   const total = items.reduce((s,i)=>s+i.qty,0);
 
-  const rowsHtml = items.map(i => `
+  const rowsHtml = items.map(i => {
+    const st = statusMap[i.produto.toLowerCase().trim()];
+    const dot = st === 'active'
+      ? `<span style="width:9px;height:9px;border-radius:50%;background:#e07b00;display:inline-block;flex-shrink:0;margin-right:8px;"></span>`
+      : st === 'done'
+      ? `<span style="width:9px;height:9px;border-radius:50%;background:#2a9d5c;display:inline-block;flex-shrink:0;margin-right:8px;"></span>`
+      : `<span style="width:9px;height:9px;border-radius:50%;background:#ccc;display:inline-block;flex-shrink:0;margin-right:8px;"></span>`;
+    return `
     <tr>
-      <td>${i.produto}</td>
+      <td style="display:flex;align-items:center;">${dot}${i.produto}</td>
       <td class="num">${fmtKg(i.qty)} kg<span class="pct">${(i.qty/total*100).toFixed(1)}%</span></td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
 
   el.innerHTML = `
     <table class="plan-table">
@@ -883,9 +909,10 @@ function renderReactors(crpSheet, allRows){
   if(allRows){
     allRows.forEach(r => {
       const st = (r['Status']||'').toString().trim().toUpperCase();
-      if(st === 'EM ANDAMENTO' || st === 'PARADO!'){
+      if(st === 'EM ANDAMENTO' || st === 'PARADO!' || st === 'PENDENTE'){
         const p = (r['PRODUTO']||'').toString().trim().toLowerCase();
         if(p) activeProducts.add(p);
+
       }
     });
   }
@@ -904,7 +931,8 @@ function renderReactors(crpSheet, allRows){
           <div class="gpct">${r.horas.toFixed(1)}h <span style="font-size:12px;color:var(--ink-faint);font-family:'IBM Plex Sans';">/ ${r.capacidade.toFixed(0)}h</span></div>
           <span class="badge ${over ? 'warn' : 'ok'}">${over ? 'Estoura' : 'Cabe'}</span>
           ${r.products.length ? `<div class="reactor-products">${r.products.map(p => {
-            const isActive = activeProducts.has(p.produto.toLowerCase());
+            const isActive = activeProducts.has(p.produto.toLowerCase().trim());
+
             const dot = isActive
               ? `<span title="Em andamento" style="width:9px;height:9px;border-radius:50%;background:#e07b00;display:inline-block;flex-shrink:0;margin-right:5px;"></span>`
               : `<span title="Planejado" style="width:9px;height:9px;border-radius:50%;background:#ccc;display:inline-block;flex-shrink:0;margin-right:5px;"></span>`;
