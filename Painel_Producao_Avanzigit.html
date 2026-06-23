@@ -817,18 +817,21 @@ function renderWeekPlan(mrpSheet, allRows){
   inicioSemana.setDate(hoje.getDate() - diaSemana);
   inicioSemana.setHours(0,0,0,0);
 
+  // Normaliza nome: remove sufixo de dia (-Seg, -Ter, -Qua, -Qui, -Sex)
+  function normalizeName(nome){
+    return nome.toLowerCase().trim().replace(/-(seg|ter|qua|qui|sex|sab|dom)$/i, '').trim();
+  }
+
   const statusMap = {};
   if(allRows){
     allRows.forEach(r => {
       const st = (r['Status']||'').toString().trim().toUpperCase();
       const p = (r['PRODUTO']||'').toString().trim().toLowerCase();
       if(!p) return;
-      // EM ANDAMENTO/PARADO qualquer data
       if(st === 'EM ANDAMENTO' || st === 'PARADO!'){
         statusMap[p] = 'active';
         return;
       }
-      // FINALIZADO só conta se for dessa semana
       if(st === 'FINALIZADO'){
         const data = r['DATA'] ? new Date(r['DATA']) : null;
         if(data && data >= inicioSemana && statusMap[p] !== 'active'){
@@ -841,7 +844,7 @@ function renderWeekPlan(mrpSheet, allRows){
   const total = items.reduce((s,i)=>s+i.qty,0);
 
   const rowsHtml = items.map(i => {
-    const st = statusMap[i.produto.toLowerCase().trim()];
+    const st = statusMap[normalizeName(i.produto)];
     const dot = st === 'active'
       ? `<span style="width:9px;height:9px;border-radius:50%;background:#e07b00;display:inline-block;flex-shrink:0;margin-right:8px;"></span>`
       : st === 'done'
@@ -928,6 +931,10 @@ function renderReactors(crpSheet, allRows){
   inicioSemana2.setDate(hoje2.getDate() - diaSemana2);
   inicioSemana2.setHours(0,0,0,0);
 
+  function normalizeNameR(nome){
+    return nome.toLowerCase().trim().replace(/-(seg|ter|qua|qui|sex|sab|dom)$/i, '').trim();
+  }
+
   const activeProducts = new Set();
   const doneProducts = new Set();
   if(allRows){
@@ -960,7 +967,7 @@ function renderReactors(crpSheet, allRows){
           <div class="gpct">${r.horas.toFixed(1)}h <span style="font-size:12px;color:var(--ink-faint);font-family:'IBM Plex Sans';">/ ${r.capacidade.toFixed(0)}h</span></div>
           <span class="badge ${over ? 'warn' : 'ok'}">${over ? 'Estoura' : 'Cabe'}</span>
           ${r.products.length ? `<div class="reactor-products">${r.products.map(p => {
-            const pNorm = p.produto.toLowerCase().trim();
+            const pNorm = normalizeNameR(p.produto);
             const isActive = activeProducts.has(pNorm);
             const isDone = !isActive && doneProducts.has(pNorm);
             const dot = isActive
