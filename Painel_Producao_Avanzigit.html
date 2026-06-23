@@ -269,7 +269,15 @@
       <div class="section">
         <div class="section-head">
           <h3>Capacidade dos reatores</h3>
-          <span class="note">Esta semana</span>
+          <div style="display:flex;align-items:center;gap:16px;">
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);">
+              <span style="width:10px;height:10px;border-radius:50%;background:#e07b00;display:inline-block;flex-shrink:0;"></span> Em andamento
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);">
+              <span style="width:10px;height:10px;border-radius:50%;background:#ccc;display:inline-block;flex-shrink:0;"></span> Planejado
+            </div>
+            <span class="note">Esta semana</span>
+          </div>
         </div>
         <div class="gauge-grid" id="gaugeGrid"></div>
       </div>
@@ -436,7 +444,8 @@ function processWorkbook(wb){
   applyFilterAndRender();
 
   const crpSheet = findSheet(wb, /crp/i);
-  renderReactors(crpSheet);
+  const allRows = XLSX.utils.sheet_to_json(regSheet, {defval:null});
+  renderReactors(crpSheet, allRows);
 
   const mrpSheet = findSheet(wb, /mrp/i);
   renderWeekPlan(mrpSheet);
@@ -849,7 +858,7 @@ function parseReactorProducts(rows){
   return buckets;
 }
 
-function renderReactors(crpSheet){
+function renderReactors(crpSheet, allRows){
   const el = document.getElementById('gaugeGrid');
   if(!crpSheet){ el.innerHTML = '<p style="color:var(--ink-soft);font-size:14px;">Aba CRP não encontrada.</p>'; return; }
 
@@ -869,6 +878,18 @@ function renderReactors(crpSheet){
 
   if(!reactors.length){ el.innerHTML = '<p style="color:var(--ink-soft);font-size:14px;">Sem dados de reator.</p>'; return; }
 
+  // Build set of products currently EM ANDAMENTO or PARADO!
+  const activeProducts = new Set();
+  if(allRows){
+    allRows.forEach(r => {
+      const st = (r['Status']||'').toString().trim().toUpperCase();
+      if(st === 'EM ANDAMENTO' || st === 'PARADO!'){
+        const p = (r['PRODUTO']||'').toString().trim().toLowerCase();
+        if(p) activeProducts.add(p);
+      }
+    });
+  }
+
   const productBuckets = parseReactorProducts(rows);
   reactors.forEach((r, idx) => { r.products = productBuckets[idx] || []; });
 
@@ -882,7 +903,13 @@ function renderReactors(crpSheet){
           <div class="gname">${r.name}</div>
           <div class="gpct">${r.horas.toFixed(1)}h <span style="font-size:12px;color:var(--ink-faint);font-family:'IBM Plex Sans';">/ ${r.capacidade.toFixed(0)}h</span></div>
           <span class="badge ${over ? 'warn' : 'ok'}">${over ? 'Estoura' : 'Cabe'}</span>
-          ${r.products.length ? `<div class="reactor-products">${r.products.map(p=>`<div>${p.produto} <span>${fmtKg(p.qty)} kg</span></div>`).join('')}</div>` : '<div class="reactor-products empty">Nada planejado</div>'}
+          ${r.products.length ? `<div class="reactor-products">${r.products.map(p => {
+            const isActive = activeProducts.has(p.produto.toLowerCase());
+            const dot = isActive
+              ? `<span title="Em andamento" style="width:9px;height:9px;border-radius:50%;background:#e07b00;display:inline-block;flex-shrink:0;margin-right:5px;"></span>`
+              : `<span title="Planejado" style="width:9px;height:9px;border-radius:50%;background:#ccc;display:inline-block;flex-shrink:0;margin-right:5px;"></span>`;
+            return `<div style="display:flex;align-items:center;">${dot}${p.produto} <span style="margin-left:auto;">${fmtKg(p.qty)} kg</span></div>`;
+          }).join('')}</div>` : '<div class="reactor-products empty">Nada planejado</div>'}
         </div>
       </div>
     `;
