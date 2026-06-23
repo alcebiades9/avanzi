@@ -453,6 +453,8 @@ function processWorkbook(wb){
 
   const crpSheet = findSheet(wb, /crp/i);
   const allRows = XLSX.utils.sheet_to_json(regSheet, {defval:null});
+  const mrpSheet = findSheet(wb, /mrp/i);
+
   // Build MRP items list for reactor display
   const mrpItemsForReactor = [];
   if(mrpSheet){
@@ -473,7 +475,6 @@ function processWorkbook(wb){
   }
   renderReactors(crpSheet, allRows, mrpItemsForReactor);
 
-  const mrpSheet = findSheet(wb, /mrp/i);
   renderWeekPlan(mrpSheet, allRows);
   renderMateriasPrimas(mrpSheet);
 
