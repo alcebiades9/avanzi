@@ -810,14 +810,31 @@ function renderWeekPlan(mrpSheet, allRows){
 
   if(!items.length){ el.innerHTML = '<p style="color:var(--ink-soft);font-size:14px;">Nenhum produto planejado essa semana.</p>'; return; }
 
+  // Pega início da semana atual (segunda-feira)
+  const hoje = new Date();
+  const diaSemana = hoje.getDay() === 0 ? 6 : hoje.getDay() - 1;
+  const inicioSemana = new Date(hoje);
+  inicioSemana.setDate(hoje.getDate() - diaSemana);
+  inicioSemana.setHours(0,0,0,0);
+
   const statusMap = {};
   if(allRows){
     allRows.forEach(r => {
       const st = (r['Status']||'').toString().trim().toUpperCase();
       const p = (r['PRODUTO']||'').toString().trim().toLowerCase();
       if(!p) return;
-      if(st === 'EM ANDAMENTO' || st === 'PARADO!') statusMap[p] = 'active';
-      else if(st === 'FINALIZADO' && statusMap[p] !== 'active') statusMap[p] = 'done';
+      // EM ANDAMENTO/PARADO qualquer data
+      if(st === 'EM ANDAMENTO' || st === 'PARADO!'){
+        statusMap[p] = 'active';
+        return;
+      }
+      // FINALIZADO só conta se for dessa semana
+      if(st === 'FINALIZADO'){
+        const data = r['DATA'] ? new Date(r['DATA']) : null;
+        if(data && data >= inicioSemana && statusMap[p] !== 'active'){
+          statusMap[p] = 'done';
+        }
+      }
     });
   }
 
@@ -904,15 +921,27 @@ function renderReactors(crpSheet, allRows){
 
   if(!reactors.length){ el.innerHTML = '<p style="color:var(--ink-soft);font-size:14px;">Sem dados de reator.</p>'; return; }
 
-  // Build set of products currently EM ANDAMENTO or PARADO!
+  // Build status sets for reactor products (esta semana)
+  const hoje2 = new Date();
+  const diaSemana2 = hoje2.getDay() === 0 ? 6 : hoje2.getDay() - 1;
+  const inicioSemana2 = new Date(hoje2);
+  inicioSemana2.setDate(hoje2.getDate() - diaSemana2);
+  inicioSemana2.setHours(0,0,0,0);
+
   const activeProducts = new Set();
+  const doneProducts = new Set();
   if(allRows){
     allRows.forEach(r => {
       const st = (r['Status']||'').toString().trim().toUpperCase();
+      const p = (r['PRODUTO']||'').toString().trim().toLowerCase();
+      if(!p) return;
       if(st === 'EM ANDAMENTO' || st === 'PARADO!' || st === 'PENDENTE'){
-        const p = (r['PRODUTO']||'').toString().trim().toLowerCase();
-        if(p) activeProducts.add(p);
-
+        activeProducts.add(p);
+      } else if(st === 'FINALIZADO'){
+        const data = r['DATA'] ? new Date(r['DATA']) : null;
+        if(data && data >= inicioSemana2 && !activeProducts.has(p)){
+          doneProducts.add(p);
+        }
       }
     });
   }
@@ -931,10 +960,13 @@ function renderReactors(crpSheet, allRows){
           <div class="gpct">${r.horas.toFixed(1)}h <span style="font-size:12px;color:var(--ink-faint);font-family:'IBM Plex Sans';">/ ${r.capacidade.toFixed(0)}h</span></div>
           <span class="badge ${over ? 'warn' : 'ok'}">${over ? 'Estoura' : 'Cabe'}</span>
           ${r.products.length ? `<div class="reactor-products">${r.products.map(p => {
-            const isActive = activeProducts.has(p.produto.toLowerCase().trim());
-
+            const pNorm = p.produto.toLowerCase().trim();
+            const isActive = activeProducts.has(pNorm);
+            const isDone = !isActive && doneProducts.has(pNorm);
             const dot = isActive
               ? `<span title="Em andamento" style="width:9px;height:9px;border-radius:50%;background:#e07b00;display:inline-block;flex-shrink:0;margin-right:5px;"></span>`
+              : isDone
+              ? `<span title="Finalizado" style="width:9px;height:9px;border-radius:50%;background:#2a9d5c;display:inline-block;flex-shrink:0;margin-right:5px;"></span>`
               : `<span title="Planejado" style="width:9px;height:9px;border-radius:50%;background:#ccc;display:inline-block;flex-shrink:0;margin-right:5px;"></span>`;
             return `<div style="display:flex;align-items:center;">${dot}${p.produto} <span style="margin-left:auto;">${fmtKg(p.qty)} kg</span></div>`;
           }).join('')}</div>` : '<div class="reactor-products empty">Nada planejado</div>'}
