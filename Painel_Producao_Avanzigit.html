@@ -822,9 +822,16 @@ function renderWeekPlan(mrpSheet, allRows){
     return nome.toLowerCase().trim() + '|' + Math.round(qty);
   }
 
-  // Mapa por nome+qty e também só por nome (fallback)
+  // Conta quantas vezes cada produto aparece no MRP (duplicatas)
+  const mrpCount = {};
+  items.forEach(i => {
+    const p = i.produto.toLowerCase().trim();
+    mrpCount[p] = (mrpCount[p] || 0) + 1;
+  });
+
+  // Mapa por nome+qty (preciso) e por nome (só para produtos únicos no MRP)
   const statusMap = {};     // chave: nome|qty
-  const statusMapName = {}; // chave: só nome (fallback)
+  const statusMapName = {}; // chave: só nome (apenas produtos únicos)
   if(allRows){
     allRows.forEach(r => {
       const st = (r['Status']||'').toString().trim().toUpperCase();
@@ -834,14 +841,14 @@ function renderWeekPlan(mrpSheet, allRows){
       const key = p + '|' + qty;
       if(st === 'EM ANDAMENTO' || st === 'PARADO!'){
         statusMap[key] = 'active';
-        statusMapName[p] = 'active';
+        if((mrpCount[p]||0) <= 1) statusMapName[p] = 'active';
         return;
       }
       if(st === 'FINALIZADO'){
         const data = r['DATA'] ? new Date(r['DATA']) : null;
         if(data && data >= inicioSemana){
           if(statusMap[key] !== 'active') statusMap[key] = 'done';
-          if(statusMapName[p] !== 'active') statusMapName[p] = 'done';
+          if((mrpCount[p]||0) <= 1 && statusMapName[p] !== 'active') statusMapName[p] = 'done';
         }
       }
     });
@@ -851,8 +858,9 @@ function renderWeekPlan(mrpSheet, allRows){
 
   const rowsHtml = items.map(i => {
     const key = makeKey(i.produto, i.qty);
-    // usa nome+qty; se não achar, cai no só-nome
-    const st = statusMap[key] || statusMapName[i.produto.toLowerCase().trim()];
+    const pLow = i.produto.toLowerCase().trim();
+    // usa nome+qty; fallback por nome só se produto é único no MRP
+    const st = statusMap[key] || ((mrpCount[pLow]||0) <= 1 ? statusMapName[pLow] : undefined);
     const dot = st === 'active'
       ? `<span style="width:9px;height:9px;border-radius:50%;background:#e07b00;display:inline-block;flex-shrink:0;margin-right:8px;"></span>`
       : st === 'done'
