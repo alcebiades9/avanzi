@@ -935,7 +935,7 @@ function renderReactors(crpSheet, allRows){
       const st = (r['Status']||'').toString().trim().toUpperCase();
       const p = (r['PRODUTO']||'').toString().trim().toLowerCase();
       if(!p) return;
-      if(st === 'EM ANDAMENTO' || st === 'PARADO!' || st === 'PENDENTE'){
+      if(st === 'EM ANDAMENTO' || st === 'PARADO!'){
         activeProducts.add(p);
       } else if(st === 'FINALIZADO'){
         const data = r['DATA'] ? new Date(r['DATA']) : null;
