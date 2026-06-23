@@ -849,7 +849,7 @@ function renderWeekPlan(mrpSheet, allRows){
       : `<span style="width:9px;height:9px;border-radius:50%;background:#ccc;display:inline-block;flex-shrink:0;margin-right:8px;"></span>`;
     return `
     <tr>
-      <td style="display:flex;align-items:center;">${dot}${i.produto}</td>
+      <td><div style="display:flex;align-items:center;">${dot}${i.produto}</div></td>
       <td class="num">${fmtKg(i.qty)} kg<span class="pct">${(i.qty/total*100).toFixed(1)}%</span></td>
     </tr>`;
   }).join('');
