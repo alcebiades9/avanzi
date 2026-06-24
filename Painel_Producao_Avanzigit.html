@@ -976,23 +976,54 @@ function renderReactors(crpSheet, allRows, mrpItems){
   inicioSemana2.setDate(hoje2.getDate() - diaSemana2);
   inicioSemana2.setHours(0,0,0,0);
 
-  // Para reatores: usa só nome (CRP não tem quantidade)
-  const activeProducts = new Set();
-  const doneProducts = new Set();
+  // Para reatores: usa nome+qty (igual ao plano da semana)
+  function makeKeyR(nome, qty){ return nome.toLowerCase().trim() + '|' + Math.round(qty); }
+
+  // Conta duplicatas no MRP
+  const mrpCountR = {};
+  (mrpItems||[]).forEach(i => {
+    const p = i.produto.toLowerCase().trim();
+    mrpCountR[p] = (mrpCountR[p]||0) + 1;
+  });
+
+  const activeProductsR = {};  // key → 'active'
+  const doneProductsR = {};    // key → 'done'
   if(allRows){
     allRows.forEach(r => {
       const st = (r['Status']||'').toString().trim().toUpperCase();
       const p = (r['PRODUTO']||'').toString().trim().toLowerCase();
+      const qty = Math.round(Number(r['Quantidade_Produzida_kg'])||0);
       if(!p) return;
+      const key = makeKeyR(p, qty);
       if(st === 'EM ANDAMENTO' || st === 'PARADO!'){
-        activeProducts.add(p);
+        activeProductsR[key] = true;
+        activeProductsR[p] = true; // fallback por nome
       } else if(st === 'FINALIZADO'){
         const data = r['DATA'] ? new Date(r['DATA']) : null;
-        if(data && data >= inicioSemana2 && !activeProducts.has(p)){
-          doneProducts.add(p);
+        if(data && data >= inicioSemana2){
+          if(!activeProductsR[key]) doneProductsR[key] = true;
+          if(!activeProductsR[p]) doneProductsR[p] = true;
         }
       }
     });
+  }
+
+  // Função para verificar status de um produto do reator
+  function getReactorStatus(produto, qty){
+    const p = produto.toLowerCase().trim();
+    const key = makeKeyR(p, qty);
+    const isDup = (mrpCountR[p]||0) > 1;
+    if(isDup){
+      // produto duplicado: usa nome+qty
+      if(activeProductsR[key]) return 'active';
+      if(doneProductsR[key]) return 'done';
+      return 'none';
+    } else {
+      // produto único: usa só nome
+      if(activeProductsR[p]) return 'active';
+      if(doneProductsR[p]) return 'done';
+      return 'none';
+    }
   }
 
   const productReatorMap = parseReactorProducts(rows);
@@ -1010,9 +1041,9 @@ function renderReactors(crpSheet, allRows, mrpItems){
           <div class="gpct">${r.horas.toFixed(1)}h <span style="font-size:12px;color:var(--ink-faint);font-family:'IBM Plex Sans';">/ ${r.capacidade.toFixed(0)}h</span></div>
           <span class="badge ${over ? 'warn' : 'ok'}">${over ? 'Estoura' : 'Cabe'}</span>
           ${r.products.length ? `<div class="reactor-products">${r.products.map(p => {
-            const pNorm = p.produto.toLowerCase().trim();
-            const isActive = activeProducts.has(pNorm);
-            const isDone = !isActive && doneProducts.has(pNorm);
+            const reactorSt = getReactorStatus(p.produto, p.qty);
+            const isActive = reactorSt === 'active';
+            const isDone = reactorSt === 'done';
             const dot = isActive
               ? `<span title="Em andamento" style="width:9px;height:9px;border-radius:50%;background:#e07b00;display:inline-block;flex-shrink:0;margin-right:5px;"></span>`
               : isDone
