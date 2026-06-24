@@ -509,7 +509,7 @@ function processWorkbook(wb){
   renderReactors(crpSheet, allRows, mrpItemsForReactor);
 
   renderWeekPlan(mrpSheet, allRows);
-  renderMateriasPrimas(mrpSheet);
+  renderMateriasPrimas(mrpSheet, allRows);
 
   const mediaSheet = findSheet(wb, /^média$|^media$/i);
   renderMediaMensal(mediaSheet);
@@ -803,7 +803,7 @@ function renderMediaMensalFiltered(){
   </table>`;
 }
 
-function renderMateriasPrimas(mrpSheet){
+function renderMateriasPrimas(mrpSheet, allRows){
   const tbody = document.getElementById('mpTableBody');
   const summary = document.getElementById('mpSummary');
   if(!mrpSheet){ tbody.innerHTML = '<tr><td colspan="5" style="color:var(--ink-soft);">Aba MRP não encontrada.</td></tr>'; return; }
@@ -815,15 +815,88 @@ function renderMateriasPrimas(mrpSheet){
   }
   if(headerIdx === -1){ tbody.innerHTML = '<tr><td colspan="5" style="color:var(--ink-soft);">Tabela de matéria-prima não encontrada (linha com "MATERIA-PRIMA").</td></tr>'; return; }
 
+  // === Calcular PRECISA no JavaScript ===
+  // 1. Início da semana atual (segunda-feira)
+  const hoje = new Date();
+  const diaAtual = hoje.getDay() === 0 ? 6 : hoje.getDay() - 1;
+  const inicioSem = new Date(hoje);
+  inicioSem.setDate(hoje.getDate() - diaAtual);
+  inicioSem.setHours(0,0,0,0);
+
+  // 2. Soma finalizado essa semana por produto
+  const finalizedQty = {};
+  if(allRows){
+    allRows.forEach(r => {
+      const st = (r['Status']||'').toString().trim().toUpperCase();
+      if(st !== 'FINALIZADO') return;
+      const data = r['DATA'] ? new Date(r['DATA']) : null;
+      if(!data || data < inicioSem) return;
+      const p = (r['PRODUTO']||'').toString().trim().toLowerCase();
+      const qty = Number(r['Quantidade_Produzida_kg'])||0;
+      finalizedQty[p] = (finalizedQty[p]||0) + qty;
+    });
+  }
+
+  // 3. Plano da semana: quanto ainda falta por produto
+  let planHeaderIdx = -1;
+  for(let i=0;i<rows.length;i++){
+    if(rows[i] && rows[i][0] === 'PRODUTO'){ planHeaderIdx = i; break; }
+  }
+  const remaining = {}; // produto_lower → qty restante
+  if(planHeaderIdx !== -1){
+    for(let i=planHeaderIdx+1;i<rows.length;i++){
+      const r = rows[i];
+      if(!r||!r[0]) break;
+      if(r[0].toString().toUpperCase().includes('TOTAL')) break;
+      const nome = r[0].toString().trim().toLowerCase();
+      const qty = Number(r[1])||0;
+      if(qty <= 0) continue;
+      const fin = finalizedQty[nome]||0;
+      const rest = Math.max(0, qty - fin);
+      remaining[nome] = (remaining[nome]||0) + rest;
+    }
+  }
+
+  // 4. Tabela de receitas: encontra cabeçalho
+  let recipeHeaderIdx = -1;
+  for(let i=0;i<rows.length;i++){
+    if(rows[i] && (rows[i][0]||'').toString().trim() === 'PRODUTO' && rows[i].length > 5){
+      recipeHeaderIdx = i; break;
+    }
+  }
+
+  // 5. Calcula PRECISA por MP usando receita × remaining
+  const precisaCalc = {}; // mp_nome_lower → qty
+  if(recipeHeaderIdx !== -1){
+    const mpCols = rows[recipeHeaderIdx]; // [PRODUTO, MP1, MP2, ...]
+    for(let i=recipeHeaderIdx+1;i<rows.length;i++){
+      const r = rows[i];
+      if(!r||!r[0]) break;
+      const prodNome = r[0].toString().trim().toLowerCase();
+      const rem = remaining[prodNome]||0;
+      if(rem <= 0) continue;
+      for(let c=1;c<mpCols.length;c++){
+        const mpNome = (mpCols[c]||'').toString().trim().toLowerCase();
+        if(!mpNome) continue;
+        const prop = Number(r[c])||0;
+        if(prop <= 0) continue;
+        precisaCalc[mpNome] = (precisaCalc[mpNome]||0) + prop * rem;
+      }
+    }
+  }
+
+  // 6. Build items using calculated PRECISA
   const items = [];
   for(let i=headerIdx+1; i<rows.length; i++){
     const r = rows[i];
     if(!r || !r[0] || (r[0]||'').toString().trim() === '') break;
+    const nome = r[0].toString().trim();
+    const precisaJS = precisaCalc[nome.toLowerCase()] || 0;
     items.push({
-      nome: r[0].toString().trim(),
-      precisa: r[1] === null || r[1] === '' ? 0 : Number(r[1]) || 0,
+      nome,
+      precisa: precisaJS,
       estoque: r[2] === null || r[2] === '' || r[2] === 'Verificar' ? null : Number(r[2]) || 0,
-      saldo: r[3] === null || r[3] === '-' ? null : Number(r[3]) || 0,
+      saldo: r[2] === null ? null : (Number(r[2])||0) - precisaJS,
       status: (r[4] || '').toString().trim()
     });
   }
