@@ -169,6 +169,39 @@
   .mp-badge.ok{background:var(--ok-bg);color:var(--ok);}
   .mp-badge.purple{background:#EDE9FE;color:#7C3AED;}
 
+
+  /* ===== MOBILE RESPONSIVO ===== */
+  @media (max-width:600px){
+    /* Média mensal - esconde colunas menos importantes */
+    .media-table th:nth-child(2),
+    .media-table td:nth-child(2){ display:none; }
+    .media-table th:nth-child(3),
+    .media-table td:nth-child(3){ display:none; }
+    .media-table th:nth-child(4),
+    .media-table td:nth-child(4){ padding-left:8px; }
+    .media-table{ font-size:12px; }
+    .media-table td:first-child{ font-size:12px; }
+    .media-table th{ font-size:10px; }
+
+    /* Matéria-prima - esconde colunas no celular */
+    .mp-table th:nth-child(2),
+    .mp-table td:nth-child(2){ display:none; }
+    .mp-table th:nth-child(3),
+    .mp-table td:nth-child(3){ display:none; }
+    .mp-table{ font-size:12px; }
+    .mp-table td:first-child{ font-size:12px; }
+    .mp-table td{ padding:7px 6px; }
+    .mp-table th{ font-size:10px; padding:7px 6px; }
+
+    /* Plano da semana */
+    .plan-table .pct{ display:none; }
+    .plan-table td, .plan-table th{ padding:7px 6px; font-size:12px; }
+
+    /* Geral */
+    .section{ padding:16px 14px; }
+    .section-head h3{ font-size:14px; }
+  }
+
   /* media mensal table */
   .media-table{width:100%;border-collapse:collapse;font-size:13.5px;}
   .media-table th{font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-faint);padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;}
@@ -440,7 +473,7 @@ function processWorkbook(wb){
     prodTotals[p] = (prodTotals[p]||0) + (Number(r['Quantidade_Produzida_kg'])||0);
   });
   const topList = Object.entries(prodTotals).sort((a,b)=>b[1]-a[1]);
-  window._kpiData = { totalKg, numLotesReator, numLotesCTN, avgLoteReator, top: topList[0] };
+  window._kpiData = { totalKg, numLotesReator, numLotesCTN, avgLoteReator, top: topList[0], isReactorProduct };
   renderKpis(totalKg, numLotesReator, numLotesCTN, avgLoteReator, topList[0]);
 
   allFinishedRows = finished;
@@ -513,11 +546,28 @@ function applyFilterAndRender(){
   renderMonthBadge();
   renderMediaMensalFiltered();
 
-  // Atualiza o card "Produto líder" com base no filtro ativo
-  const k = window._kpiData;
-  if(k){
-    const topFiltered = sortedList[0] || null;
-    renderKpis(k.totalKg, k.numLotesReator, k.numLotesCTN, k.avgLoteReator, topFiltered);
+  // Atualiza todos os KPIs com base no filtro ativo
+  const topFiltered = sortedList[0] || null;
+  if(selectedMonth){
+    // Calcula KPIs do mês selecionado
+    const monthRows = listRows;
+    const totalKgMonth = monthRows.reduce((s,r) => s + (Number(r['Quantidade_Produzida_kg'])||0), 0);
+    const lotesReatorMonth = monthRows.filter(r => {
+      const p = (r['PRODUTO']||'').toString().trim().toLowerCase();
+      return window._kpiData && window._kpiData.isReactorProduct && window._kpiData.isReactorProduct(p);
+    }).length;
+    const lotesCTNMonth = monthRows.length - lotesReatorMonth;
+    const reatorRows = monthRows.filter(r => {
+      const p = (r['PRODUTO']||'').toString().trim().toLowerCase();
+      return window._kpiData && window._kpiData.isReactorProduct && window._kpiData.isReactorProduct(p);
+    });
+    const avgReatorMonth = reatorRows.length > 0
+      ? reatorRows.reduce((s,r) => s + (Number(r['Quantidade_Produzida_kg'])||0), 0) / reatorRows.length
+      : 0;
+    renderKpis(totalKgMonth, lotesReatorMonth, lotesCTNMonth, avgReatorMonth, topFiltered);
+  } else {
+    const k = window._kpiData;
+    if(k) renderKpis(k.totalKg, k.numLotesReator, k.numLotesCTN, k.avgLoteReator, topFiltered);
   }
 
   const countEl = document.getElementById('filterCount');
