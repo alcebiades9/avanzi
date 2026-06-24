@@ -169,6 +169,39 @@
   .mp-badge.ok{background:var(--ok-bg);color:var(--ok);}
   .mp-badge.purple{background:#EDE9FE;color:#7C3AED;}
 
+
+  /* ===== MOBILE RESPONSIVO ===== */
+  @media (max-width:600px){
+    /* Média mensal - esconde colunas menos importantes */
+    .media-table th:nth-child(2),
+    .media-table td:nth-child(2){ display:none; }
+    .media-table th:nth-child(3),
+    .media-table td:nth-child(3){ display:none; }
+    .media-table th:nth-child(4),
+    .media-table td:nth-child(4){ padding-left:8px; }
+    .media-table{ font-size:12px; }
+    .media-table td:first-child{ font-size:12px; }
+    .media-table th{ font-size:10px; }
+
+    /* Matéria-prima - esconde colunas no celular */
+    .mp-table th:nth-child(2),
+    .mp-table td:nth-child(2){ display:none; }
+    .mp-table th:nth-child(3),
+    .mp-table td:nth-child(3){ display:none; }
+    .mp-table{ font-size:12px; }
+    .mp-table td:first-child{ font-size:12px; }
+    .mp-table td{ padding:7px 6px; }
+    .mp-table th{ font-size:10px; padding:7px 6px; }
+
+    /* Plano da semana */
+    .plan-table .pct{ display:none; }
+    .plan-table td, .plan-table th{ padding:7px 6px; font-size:12px; }
+
+    /* Geral */
+    .section{ padding:16px 14px; }
+    .section-head h3{ font-size:14px; }
+  }
+
   /* media mensal table */
   .media-table{width:100%;border-collapse:collapse;font-size:13.5px;}
   .media-table th{font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-faint);padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;}
@@ -332,7 +365,7 @@
 
   </div>
 
-  <footer>Painel gerado localmente a partir da planilha de Produção e Controle &middot; Avanzi Química</footer>
+  <footer>Painel gerado localmente a partir da planilha de Produção e Controle &middot; Avanzi Química<br><span style="font-size:13px;opacity:0.9;font-weight:500;">Desenvolvido por Alcebíades Correia</span></footer>
 </div>
 
 <script>
@@ -440,7 +473,7 @@ function processWorkbook(wb){
     prodTotals[p] = (prodTotals[p]||0) + (Number(r['Quantidade_Produzida_kg'])||0);
   });
   const topList = Object.entries(prodTotals).sort((a,b)=>b[1]-a[1]);
-  window._kpiData = { totalKg, numLotesReator, numLotesCTN, avgLoteReator, top: topList[0] };
+  window._kpiData = { totalKg, numLotesReator, numLotesCTN, avgLoteReator, top: topList[0], isReactorProduct };
   renderKpis(totalKg, numLotesReator, numLotesCTN, avgLoteReator, topList[0]);
 
   allFinishedRows = finished;
@@ -453,6 +486,8 @@ function processWorkbook(wb){
 
   const crpSheet = findSheet(wb, /crp/i);
   const allRows = XLSX.utils.sheet_to_json(regSheet, {defval:null});
+  const mrpSheet = findSheet(wb, /mrp/i);
+
   // Build MRP items list for reactor display
   const mrpItemsForReactor = [];
   if(mrpSheet){
@@ -473,9 +508,8 @@ function processWorkbook(wb){
   }
   renderReactors(crpSheet, allRows, mrpItemsForReactor);
 
-  const mrpSheet = findSheet(wb, /mrp/i);
   renderWeekPlan(mrpSheet, allRows);
-  renderMateriasPrimas(mrpSheet);
+  renderMateriasPrimas(mrpSheet, allRows);
 
   const mediaSheet = findSheet(wb, /^média$|^media$/i);
   renderMediaMensal(mediaSheet);
@@ -512,11 +546,28 @@ function applyFilterAndRender(){
   renderMonthBadge();
   renderMediaMensalFiltered();
 
-  // Atualiza o card "Produto líder" com base no filtro ativo
-  const k = window._kpiData;
-  if(k){
-    const topFiltered = sortedList[0] || null;
-    renderKpis(k.totalKg, k.numLotesReator, k.numLotesCTN, k.avgLoteReator, topFiltered);
+  // Atualiza todos os KPIs com base no filtro ativo
+  const topFiltered = sortedList[0] || null;
+  if(selectedMonth){
+    // Calcula KPIs do mês selecionado
+    const monthRows = listRows;
+    const totalKgMonth = monthRows.reduce((s,r) => s + (Number(r['Quantidade_Produzida_kg'])||0), 0);
+    const lotesReatorMonth = monthRows.filter(r => {
+      const p = (r['PRODUTO']||'').toString().trim().toLowerCase();
+      return window._kpiData && window._kpiData.isReactorProduct && window._kpiData.isReactorProduct(p);
+    }).length;
+    const lotesCTNMonth = monthRows.length - lotesReatorMonth;
+    const reatorRows = monthRows.filter(r => {
+      const p = (r['PRODUTO']||'').toString().trim().toLowerCase();
+      return window._kpiData && window._kpiData.isReactorProduct && window._kpiData.isReactorProduct(p);
+    });
+    const avgReatorMonth = reatorRows.length > 0
+      ? reatorRows.reduce((s,r) => s + (Number(r['Quantidade_Produzida_kg'])||0), 0) / reatorRows.length
+      : 0;
+    renderKpis(totalKgMonth, lotesReatorMonth, lotesCTNMonth, avgReatorMonth, topFiltered);
+  } else {
+    const k = window._kpiData;
+    if(k) renderKpis(k.totalKg, k.numLotesReator, k.numLotesCTN, k.avgLoteReator, topFiltered);
   }
 
   const countEl = document.getElementById('filterCount');
@@ -752,7 +803,7 @@ function renderMediaMensalFiltered(){
   </table>`;
 }
 
-function renderMateriasPrimas(mrpSheet){
+function renderMateriasPrimas(mrpSheet, allRows){
   const tbody = document.getElementById('mpTableBody');
   const summary = document.getElementById('mpSummary');
   if(!mrpSheet){ tbody.innerHTML = '<tr><td colspan="5" style="color:var(--ink-soft);">Aba MRP não encontrada.</td></tr>'; return; }
@@ -764,15 +815,94 @@ function renderMateriasPrimas(mrpSheet){
   }
   if(headerIdx === -1){ tbody.innerHTML = '<tr><td colspan="5" style="color:var(--ink-soft);">Tabela de matéria-prima não encontrada (linha com "MATERIA-PRIMA").</td></tr>'; return; }
 
+  // === Calcular PRECISA no JavaScript ===
+  // 1. Início da semana atual (segunda-feira)
+  const hoje = new Date();
+  const diaAtual = hoje.getDay() === 0 ? 6 : hoje.getDay() - 1;
+  const inicioSem = new Date(hoje);
+  inicioSem.setDate(hoje.getDate() - diaAtual);
+  inicioSem.setHours(0,0,0,0);
+
+  // 2. Soma finalizado essa semana por produto
+  const finalizedQty = {};
+  if(allRows){
+    allRows.forEach(r => {
+      const st = (r['Status']||'').toString().trim().toUpperCase();
+      if(st !== 'FINALIZADO') return;
+      const data = r['DATA'] ? new Date(r['DATA']) : null;
+      if(!data || data < inicioSem) return;
+      const p = (r['PRODUTO']||'').toString().trim().toLowerCase();
+      const qty = Number(r['Quantidade_Produzida_kg'])||0;
+      finalizedQty[p] = (finalizedQty[p]||0) + qty;
+    });
+  }
+
+  // 3. Plano da semana: quanto ainda falta por produto
+  let planHeaderIdx = -1;
+  for(let i=0;i<rows.length;i++){
+    if(rows[i] && rows[i][0] === 'PRODUTO'){ planHeaderIdx = i; break; }
+  }
+  const remaining = {}; // produto_lower → qty restante
+  if(planHeaderIdx !== -1){
+    for(let i=planHeaderIdx+1;i<rows.length;i++){
+      const r = rows[i];
+      if(!r||!r[0]) break;
+      if(r[0].toString().toUpperCase().includes('TOTAL')) break;
+      const nome = r[0].toString().trim().toLowerCase();
+      const qty = Number(r[1])||0;
+      if(qty <= 0) continue;
+      const fin = finalizedQty[nome]||0;
+      const rest = Math.max(0, qty - fin);
+      remaining[nome] = (remaining[nome]||0) + rest;
+    }
+  }
+
+  // 4. Tabela de receitas: encontra cabeçalho (segunda ocorrência de PRODUTO, col B não é QTD PLANEJADA)
+  let recipeHeaderIdx = -1;
+  for(let i=0;i<rows.length;i++){
+    if(rows[i] && (rows[i][0]||'').toString().trim() === 'PRODUTO'){
+      const colB = (rows[i][1]||'').toString();
+      if(!colB.includes('PLANEJADA') && colB.length > 0){
+        recipeHeaderIdx = i; break;
+      }
+    }
+  }
+
+  // Debug
+  window._debug_remaining = remaining;
+  window._debug_precisaCalc = precisaCalc;
+  // 5. Calcula PRECISA por MP usando receita × remaining
+  const precisaCalc = {}; // mp_nome_lower → qty
+  if(recipeHeaderIdx !== -1){
+    const mpCols = rows[recipeHeaderIdx]; // [PRODUTO, MP1, MP2, ...]
+    for(let i=recipeHeaderIdx+1;i<rows.length;i++){
+      const r = rows[i];
+      if(!r||!r[0]) break;
+      const prodNome = r[0].toString().trim().toLowerCase();
+      const rem = remaining[prodNome]||0;
+      if(rem <= 0) continue;
+      for(let c=1;c<mpCols.length;c++){
+        const mpNome = (mpCols[c]||'').toString().trim().toLowerCase();
+        if(!mpNome) continue;
+        const prop = Number(r[c])||0;
+        if(prop <= 0) continue;
+        precisaCalc[mpNome] = (precisaCalc[mpNome]||0) + prop * rem;
+      }
+    }
+  }
+
+  // 6. Build items using calculated PRECISA
   const items = [];
   for(let i=headerIdx+1; i<rows.length; i++){
     const r = rows[i];
     if(!r || !r[0] || (r[0]||'').toString().trim() === '') break;
+    const nome = r[0].toString().trim();
+    const precisaJS = precisaCalc[nome.toLowerCase()] || 0;
     items.push({
-      nome: r[0].toString().trim(),
-      precisa: r[1] === null || r[1] === '' ? 0 : Number(r[1]) || 0,
+      nome,
+      precisa: precisaJS,
       estoque: r[2] === null || r[2] === '' || r[2] === 'Verificar' ? null : Number(r[2]) || 0,
-      saldo: r[3] === null || r[3] === '-' ? null : Number(r[3]) || 0,
+      saldo: r[2] === null ? null : (Number(r[2])||0) - precisaJS,
       status: (r[4] || '').toString().trim()
     });
   }
@@ -975,23 +1105,54 @@ function renderReactors(crpSheet, allRows, mrpItems){
   inicioSemana2.setDate(hoje2.getDate() - diaSemana2);
   inicioSemana2.setHours(0,0,0,0);
 
-  // Para reatores: usa só nome (CRP não tem quantidade)
-  const activeProducts = new Set();
-  const doneProducts = new Set();
+  // Para reatores: usa nome+qty (igual ao plano da semana)
+  function makeKeyR(nome, qty){ return nome.toLowerCase().trim() + '|' + Math.round(qty); }
+
+  // Conta duplicatas no MRP
+  const mrpCountR = {};
+  (mrpItems||[]).forEach(i => {
+    const p = i.produto.toLowerCase().trim();
+    mrpCountR[p] = (mrpCountR[p]||0) + 1;
+  });
+
+  const activeProductsR = {};  // key → 'active'
+  const doneProductsR = {};    // key → 'done'
   if(allRows){
     allRows.forEach(r => {
       const st = (r['Status']||'').toString().trim().toUpperCase();
       const p = (r['PRODUTO']||'').toString().trim().toLowerCase();
+      const qty = Math.round(Number(r['Quantidade_Produzida_kg'])||0);
       if(!p) return;
+      const key = makeKeyR(p, qty);
       if(st === 'EM ANDAMENTO' || st === 'PARADO!'){
-        activeProducts.add(p);
+        activeProductsR[key] = true;
+        activeProductsR[p] = true; // fallback por nome
       } else if(st === 'FINALIZADO'){
         const data = r['DATA'] ? new Date(r['DATA']) : null;
-        if(data && data >= inicioSemana2 && !activeProducts.has(p)){
-          doneProducts.add(p);
+        if(data && data >= inicioSemana2){
+          if(!activeProductsR[key]) doneProductsR[key] = true;
+          if(!activeProductsR[p]) doneProductsR[p] = true;
         }
       }
     });
+  }
+
+  // Função para verificar status de um produto do reator
+  function getReactorStatus(produto, qty){
+    const p = produto.toLowerCase().trim();
+    const key = makeKeyR(p, qty);
+    const isDup = (mrpCountR[p]||0) > 1;
+    if(isDup){
+      // produto duplicado: usa nome+qty
+      if(activeProductsR[key]) return 'active';
+      if(doneProductsR[key]) return 'done';
+      return 'none';
+    } else {
+      // produto único: usa só nome
+      if(activeProductsR[p]) return 'active';
+      if(doneProductsR[p]) return 'done';
+      return 'none';
+    }
   }
 
   const productReatorMap = parseReactorProducts(rows);
@@ -1009,9 +1170,9 @@ function renderReactors(crpSheet, allRows, mrpItems){
           <div class="gpct">${r.horas.toFixed(1)}h <span style="font-size:12px;color:var(--ink-faint);font-family:'IBM Plex Sans';">/ ${r.capacidade.toFixed(0)}h</span></div>
           <span class="badge ${over ? 'warn' : 'ok'}">${over ? 'Estoura' : 'Cabe'}</span>
           ${r.products.length ? `<div class="reactor-products">${r.products.map(p => {
-            const pNorm = p.produto.toLowerCase().trim();
-            const isActive = activeProducts.has(pNorm);
-            const isDone = !isActive && doneProducts.has(pNorm);
+            const reactorSt = getReactorStatus(p.produto, p.qty);
+            const isActive = reactorSt === 'active';
+            const isDone = reactorSt === 'done';
             const dot = isActive
               ? `<span title="Em andamento" style="width:9px;height:9px;border-radius:50%;background:#e07b00;display:inline-block;flex-shrink:0;margin-right:5px;"></span>`
               : isDone
