@@ -513,6 +513,10 @@ function processWorkbook(wb){
 
   const mediaSheet = findSheet(wb, /^média$|^media$/i);
   renderMediaMensal(mediaSheet);
+
+  // Auto-refresh a cada 3 minutos
+  if(window._autoRefreshTimer) clearInterval(window._autoRefreshTimer);
+  window._autoRefreshTimer = setInterval(() => { loadData(); }, 3 * 60 * 1000);
 }
 
 function applyFilterAndRender(){
