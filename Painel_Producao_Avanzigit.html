@@ -873,9 +873,6 @@ function renderMateriasPrimas(mrpSheet, allRows){
     }
   }
 
-  // Debug
-  window._debug_remaining = remaining;
-  window._debug_precisaCalc = precisaCalc;
   // 5. Calcula PRECISA por MP usando receita × remaining
   const precisaCalc = {}; // mp_nome_lower → qty
   if(recipeHeaderIdx !== -1){
