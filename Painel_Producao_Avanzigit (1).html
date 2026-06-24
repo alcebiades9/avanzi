@@ -381,8 +381,8 @@ let selectedMonth = null;
 let allMediaRows = [];
 const MONTH_NAMES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 
-const DRIVE_FILE_ID = '1uM7oSTTTtHY12MZ639JLopsT0GCc3Ndp';
-const DRIVE_URL = `https://docs.google.com/spreadsheets/d/${DRIVE_FILE_ID}/export?format=xlsx`;
+const DRIVE_FILE_ID = '1PQzp_5YeL3Aqhg5LKr0I7ncBW6HcHpm8';
+const DRIVE_URL = `https://drive.google.com/uc?export=download&id=${DRIVE_FILE_ID}`;
 
 const loadDriveBtn = document.getElementById('loadDriveBtn');
 if(loadDriveBtn){
@@ -513,6 +513,10 @@ function processWorkbook(wb){
 
   const mediaSheet = findSheet(wb, /^média$|^media$/i);
   renderMediaMensal(mediaSheet);
+
+  // Auto-refresh a cada 3 minutos
+  if(window._autoRefreshTimer) clearInterval(window._autoRefreshTimer);
+  window._autoRefreshTimer = setInterval(() => { loadData(); }, 3 * 60 * 1000);
 }
 
 function applyFilterAndRender(){
@@ -844,6 +848,8 @@ function renderMateriasPrimas(mrpSheet, allRows){
   }
   const remaining = {}; // produto_lower → qty restante
   if(planHeaderIdx !== -1){
+    // Primeiro acumula o total planejado por produto
+    const totalPlanned = {};
     for(let i=planHeaderIdx+1;i<rows.length;i++){
       const r = rows[i];
       if(!r||!r[0]) break;
@@ -851,10 +857,13 @@ function renderMateriasPrimas(mrpSheet, allRows){
       const nome = r[0].toString().trim().toLowerCase();
       const qty = Number(r[1])||0;
       if(qty <= 0) continue;
-      const fin = finalizedQty[nome]||0;
-      const rest = Math.max(0, qty - fin);
-      remaining[nome] = (remaining[nome]||0) + rest;
+      totalPlanned[nome] = (totalPlanned[nome]||0) + qty;
     }
+    // Depois subtrai o finalizado uma só vez por produto
+    Object.keys(totalPlanned).forEach(nome => {
+      const fin = finalizedQty[nome]||0;
+      remaining[nome] = Math.max(0, totalPlanned[nome] - fin);
+    });
   }
 
   // 4. Tabela de receitas: encontra cabeçalho (segunda ocorrência de PRODUTO, col B não é QTD PLANEJADA)
@@ -868,9 +877,6 @@ function renderMateriasPrimas(mrpSheet, allRows){
     }
   }
 
-  // Debug
-  window._debug_remaining = remaining;
-  window._debug_precisaCalc = precisaCalc;
   // 5. Calcula PRECISA por MP usando receita × remaining
   const precisaCalc = {}; // mp_nome_lower → qty
   if(recipeHeaderIdx !== -1){
