@@ -857,11 +857,14 @@ function renderMateriasPrimas(mrpSheet, allRows){
     }
   }
 
-  // 4. Tabela de receitas: encontra cabeçalho
+  // 4. Tabela de receitas: encontra cabeçalho (segunda ocorrência de PRODUTO, col B não é QTD PLANEJADA)
   let recipeHeaderIdx = -1;
   for(let i=0;i<rows.length;i++){
-    if(rows[i] && (rows[i][0]||'').toString().trim() === 'PRODUTO' && rows[i].length > 5){
-      recipeHeaderIdx = i; break;
+    if(rows[i] && (rows[i][0]||'').toString().trim() === 'PRODUTO'){
+      const colB = (rows[i][1]||'').toString();
+      if(!colB.includes('PLANEJADA') && colB.length > 0){
+        recipeHeaderIdx = i; break;
+      }
     }
   }
 
