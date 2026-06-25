@@ -393,6 +393,8 @@ const DRIVE_URL = `https://docs.google.com/spreadsheets/d/${DRIVE_FILE_ID}/expor
 const loadDriveBtn = document.getElementById('loadDriveBtn');
 if(loadDriveBtn){
   loadDriveBtn.addEventListener('click', () => loadFromDrive());
+  // Carrega automaticamente quando a página abre
+  loadFromDrive();
 }
 
 reloadBtn.addEventListener('click', () => {
@@ -1275,7 +1277,7 @@ function renderReactors(crpSheet, allRows, mrpItems){
   reactors.forEach((r, idx) => { r.products = productBuckets[idx] || []; });
 
   el.innerHTML = reactors.map(r => {
-    const horasExibir = (r.horasRestantes !== undefined && r.horasRestantes > 0) ? r.horasRestantes : r.horas;
+    const horasExibir = (r.horasRestantes !== undefined) ? r.horasRestantes : r.horas;
     const pct = r.capacidade ? horasExibir/r.capacidade : 0;
     const over = pct > 1;
     return `
