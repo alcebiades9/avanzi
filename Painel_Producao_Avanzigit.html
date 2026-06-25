@@ -441,9 +441,9 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 const loadDriveBtn = document.getElementById('loadDriveBtn');
 if(loadDriveBtn){
   loadDriveBtn.addEventListener('click', () => loadFromDrive());
-  // Carrega automaticamente quando a página abre
-  loadFromDrive();
 }
+// Carrega automaticamente após 500ms (garante DOM pronto)
+setTimeout(() => loadFromDrive(), 500);
 
 function showError(msg){
   errorBox.innerHTML = '<div class="err">' + msg + '</div>';
