@@ -1039,8 +1039,10 @@ function renderWeekPlan(mrpSheet, allRows){
 }
 
 function parseReactorProducts(rows){
-  // Constrói mapa produto → reator a partir da coluna REATOR DESIGNADO do CRP
-  const productReatorMap = {}; // nome_lower → índice reator (0-3)
+  // Mapa por nome_lower → reator (para produtos únicos)
+  // Mapa por nome_lower|qty → reator (para produtos duplicados com quantidades diferentes)
+  const productReatorMap = {};    // nome_lower → índice reator
+  const productReatorMapQty = {}; // nome_lower|qty → índice reator
 
   let i = 0;
   while(i < rows.length){
@@ -1049,7 +1051,10 @@ function parseReactorProducts(rows){
     if(cell0.startsWith('REATOR 1')){
       i += 2;
       while(i < rows.length && rows[i] && rows[i][0] && !rows[i][0].toString().includes('TOTAL DO REATOR')){
-        productReatorMap[rows[i][0].toString().toLowerCase().trim()] = 0;
+        const nome = rows[i][0].toString().toLowerCase().trim();
+        const qty = Math.round(Number(rows[i][1])||0);
+        productReatorMap[nome] = 0;
+        productReatorMapQty[nome + '|' + qty] = 0;
         i++;
       }
     } else if(cell0.startsWith('REATORES 2 E 3')){
@@ -1057,28 +1062,51 @@ function parseReactorProducts(rows){
       while(i < rows.length && rows[i] && rows[i][0] && !rows[i][0].toString().startsWith('Demanda total')){
         const desig = (rows[i][5]||'').toString();
         const nome = rows[i][0].toString().toLowerCase().trim();
-        if(desig.includes('2')) productReatorMap[nome] = 1;
-        else if(desig.includes('3')) productReatorMap[nome] = 2;
+        const qty = Math.round(Number(rows[i][1])||0);
+        let rIdx = -1;
+        if(desig.includes('2')) rIdx = 1;
+        else if(desig.includes('3')) rIdx = 2;
+        if(rIdx >= 0){
+          productReatorMap[nome] = rIdx;
+          productReatorMapQty[nome + '|' + qty] = rIdx;
+        }
         i++;
       }
     } else if(cell0.startsWith('REATOR 4')){
       i += 2;
       while(i < rows.length && rows[i] && rows[i][0] && !rows[i][0].toString().includes('TOTAL DO REATOR')){
-        productReatorMap[rows[i][0].toString().toLowerCase().trim()] = 3;
+        const nome = rows[i][0].toString().toLowerCase().trim();
+        const qty = Math.round(Number(rows[i][1])||0);
+        productReatorMap[nome] = 3;
+        productReatorMapQty[nome + '|' + qty] = 3;
         i++;
       }
     }
     i++;
   }
-  return productReatorMap;
+  return { byName: productReatorMap, byNameQty: productReatorMapQty };
 }
 
 // Usa o mapa de reatores + itens do MRP para montar os buckets
-function buildReactorBuckets(productReatorMap, mrpItems){
+function buildReactorBuckets(maps, mrpItems){
   const buckets = {0:[], 1:[], 2:[], 3:[]};
+  // Conta duplicatas por nome no MRP
+  const mrpCount = {};
+  mrpItems.forEach(item => {
+    const n = item.produto.toLowerCase().trim();
+    mrpCount[n] = (mrpCount[n]||0) + 1;
+  });
+
   mrpItems.forEach(item => {
     const nomeLow = item.produto.toLowerCase().trim();
-    const rIdx = productReatorMap[nomeLow];
+    const key = nomeLow + '|' + Math.round(item.qty);
+    // Se produto duplicado no MRP e temos mapeamento por qty, usa qty
+    let rIdx;
+    if((mrpCount[nomeLow]||0) > 1 && maps.byNameQty[key] !== undefined){
+      rIdx = maps.byNameQty[key];
+    } else {
+      rIdx = maps.byName[nomeLow];
+    }
     if(rIdx !== undefined) buckets[rIdx].push({produto: item.produto, qty: item.qty});
   });
   return buckets;
@@ -1161,8 +1189,8 @@ function renderReactors(crpSheet, allRows, mrpItems){
     }
   }
 
-  const productReatorMap = parseReactorProducts(rows);
-  const productBuckets = buildReactorBuckets(productReatorMap, mrpItems || []);
+  const reactorMaps = parseReactorProducts(rows);
+  const productBuckets = buildReactorBuckets(reactorMaps, mrpItems || []);
   reactors.forEach((r, idx) => { r.products = productBuckets[idx] || []; });
 
   el.innerHTML = reactors.map(r => {
