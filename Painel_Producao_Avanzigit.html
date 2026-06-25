@@ -483,11 +483,23 @@ function processWorkbook(wb){
   renderKpis(totalKg, numLotesReator, numLotesCTN, avgLoteReator, topList[0]);
 
   allFinishedRows = finished;
+  // Preserva filtros existentes no auto-refresh
+  const prevExcluded = new Set(excludedProducts);
+  const prevMonth = selectedMonth;
   excludedProducts = new Set();
   selectedMonth = null;
   allMediaRows = [];
   const allProductNames = Object.keys(prodTotals).sort((a,b)=>a.localeCompare(b,'pt-BR'));
   renderProductFilter(allProductNames);
+  // Restaura filtros após renderizar checkboxes
+  if(prevExcluded.size > 0){
+    excludedProducts = prevExcluded;
+    // Atualiza checkboxes visuais
+    document.querySelectorAll('.prod-cb').forEach(cb => {
+      if(excludedProducts.has(cb.dataset.prod)) cb.checked = false;
+    });
+  }
+  if(prevMonth) selectedMonth = prevMonth;
   applyFilterAndRender();
 
   const crpSheet = findSheet(wb, /crp/i);
