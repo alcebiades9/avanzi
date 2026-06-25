@@ -1160,8 +1160,9 @@ function renderReactors(crpSheet, allRows, mrpItems){
   inicioSR.setDate(hojeR.getDate() - diaSR);
   inicioSR.setHours(0,0,0,0);
 
-  // 2. Finalizado esta semana por produto
-  const finQtyR = {};
+  // 2. Finalizado esta semana por produto (nome e nome+qty)
+  const finQtyR = {};     // nome → qty total finalizada
+  const finQtyRKey = {};  // nome|qty → true (finalizado exato)
   if(allRows){
     allRows.forEach(r => {
       const st = (r['Status']||'').toString().trim().toUpperCase();
@@ -1169,7 +1170,9 @@ function renderReactors(crpSheet, allRows, mrpItems){
       const data = r['DATA'] ? new Date(r['DATA']) : null;
       if(!data || data < inicioSR) return;
       const p = (r['PRODUTO']||'').toString().trim().toLowerCase();
-      finQtyR[p] = (finQtyR[p]||0) + (Number(r['Quantidade_Produzida_kg'])||0);
+      const qty = Math.round(Number(r['Quantidade_Produzida_kg'])||0);
+      finQtyR[p] = (finQtyR[p]||0) + qty;
+      finQtyRKey[p + '|' + qty] = true;
     });
   }
 
@@ -1192,10 +1195,17 @@ function renderReactors(crpSheet, allRows, mrpItems){
   // Mapa produto → reator index
   const reactorMapsR = parseReactorProducts(rows);
   const horasRestantes = {0:0, 1:0, 2:0, 3:0};
+  // Conta duplicatas por nome no MRP
+  const mrpCountR2 = {};
+  (mrpItems||[]).forEach(item => {
+    const n = item.produto.toLowerCase().trim();
+    mrpCountR2[n] = (mrpCountR2[n]||0) + 1;
+  });
+
   (mrpItems||[]).forEach(item => {
     const nomeLow = item.produto.toLowerCase().trim();
     const key = nomeLow + '|' + Math.round(item.qty);
-    const isDup = ((mrpItems||[]).filter(x => x.produto.toLowerCase().trim() === nomeLow).length) > 1;
+    const isDup = (mrpCountR2[nomeLow]||0) > 1;
     let rIdx;
     if(isDup && reactorMapsR.byNameQty[key] !== undefined){
       rIdx = reactorMapsR.byNameQty[key];
@@ -1203,9 +1213,14 @@ function renderReactors(crpSheet, allRows, mrpItems){
       rIdx = reactorMapsR.byName[nomeLow];
     }
     if(rIdx === undefined) return;
-    const planned = item.qty;
-    const fin = finQtyR[nomeLow]||0;
-    const remaining = Math.max(0, planned - fin);
+    let remaining;
+    if(isDup){
+      // produto duplicado: verifica lote específico por nome+qty
+      remaining = finQtyRKey[key] ? 0 : item.qty;
+    } else {
+      const fin = finQtyR[nomeLow]||0;
+      remaining = Math.max(0, item.qty - fin);
+    }
     const minKg = minKgMap[nomeLow]||0;
     if(minKg > 0) horasRestantes[rIdx] += (remaining * minKg) / 60;
   });
