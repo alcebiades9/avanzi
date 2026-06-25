@@ -516,7 +516,7 @@ function processWorkbook(wb){
 
   // Auto-refresh a cada 3 minutos
   if(window._autoRefreshTimer) clearInterval(window._autoRefreshTimer);
-  window._autoRefreshTimer = setInterval(() => { loadData(); }, 3 * 60 * 1000);
+  window._autoRefreshTimer = setInterval(() => { loadFromDrive(); }, 3 * 60 * 1000);
 }
 
 function applyFilterAndRender(){
