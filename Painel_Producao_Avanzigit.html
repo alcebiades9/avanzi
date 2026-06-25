@@ -1132,6 +1132,69 @@ function renderReactors(crpSheet, allRows, mrpItems){
 
   if(!reactors.length){ el.innerHTML = '<p style="color:var(--ink-soft);font-size:14px;">Sem dados de reator.</p>'; return; }
 
+  // === Recalcular horas restantes por reator ===
+  // 1. Início da semana
+  const hojeR = new Date();
+  const diaSR = hojeR.getDay() === 0 ? 6 : hojeR.getDay() - 1;
+  const inicioSR = new Date(hojeR);
+  inicioSR.setDate(hojeR.getDate() - diaSR);
+  inicioSR.setHours(0,0,0,0);
+
+  // 2. Finalizado esta semana por produto
+  const finQtyR = {};
+  if(allRows){
+    allRows.forEach(r => {
+      const st = (r['Status']||'').toString().trim().toUpperCase();
+      if(st !== 'FINALIZADO') return;
+      const data = r['DATA'] ? new Date(r['DATA']) : null;
+      if(!data || data < inicioSR) return;
+      const p = (r['PRODUTO']||'').toString().trim().toLowerCase();
+      finQtyR[p] = (finQtyR[p]||0) + (Number(r['Quantidade_Produzida_kg'])||0);
+    });
+  }
+
+  // 3. Min/kg por produto do CRP (seções de produtos)
+  const minKgMap = {};
+  for(let i=0; i<rows.length; i++){
+    const r = rows[i];
+    if(!r || !r[0]) continue;
+    const cell = r[0].toString();
+    // Pula cabeçalhos e linhas de totais
+    if(cell.startsWith('REATOR') || cell.startsWith('PRODUTO') || 
+       cell.startsWith('TOTAL') || cell.startsWith('Capacidade') || 
+       cell.startsWith('Saldo') || cell.startsWith('STATUS') ||
+       cell.startsWith('Demanda') || cell.startsWith('rcn')) continue;
+    const minKg = Number(r[2])||0;
+    if(minKg > 0) minKgMap[cell.toLowerCase().trim()] = minKg;
+  }
+
+  // 4. Recalcular horas por reator usando remaining × minKg
+  // Mapa produto → reator index
+  const reactorMapsR = parseReactorProducts(rows);
+  const horasRestantes = {0:0, 1:0, 2:0, 3:0};
+  (mrpItems||[]).forEach(item => {
+    const nomeLow = item.produto.toLowerCase().trim();
+    const key = nomeLow + '|' + Math.round(item.qty);
+    const isDup = ((mrpItems||[]).filter(x => x.produto.toLowerCase().trim() === nomeLow).length) > 1;
+    let rIdx;
+    if(isDup && reactorMapsR.byNameQty[key] !== undefined){
+      rIdx = reactorMapsR.byNameQty[key];
+    } else {
+      rIdx = reactorMapsR.byName[nomeLow];
+    }
+    if(rIdx === undefined) return;
+    const planned = item.qty;
+    const fin = finQtyR[nomeLow]||0;
+    const remaining = Math.max(0, planned - fin);
+    const minKg = minKgMap[nomeLow]||0;
+    if(minKg > 0) horasRestantes[rIdx] += (remaining * minKg) / 60;
+  });
+
+  // 5. Atualiza as horas nos reactors
+  reactors.forEach((r, idx) => {
+    r.horasRestantes = horasRestantes[idx] || 0;
+  });
+
   // Build status sets for reactor products (esta semana)
   const hoje2 = new Date();
   const diaSemana2 = hoje2.getDay() === 0 ? 6 : hoje2.getDay() - 1;
@@ -1194,14 +1257,15 @@ function renderReactors(crpSheet, allRows, mrpItems){
   reactors.forEach((r, idx) => { r.products = productBuckets[idx] || []; });
 
   el.innerHTML = reactors.map(r => {
-    const pct = r.capacidade ? r.horas/r.capacidade : 0;
+    const horasExibir = (r.horasRestantes !== undefined && r.horasRestantes > 0) ? r.horasRestantes : r.horas;
+    const pct = r.capacidade ? horasExibir/r.capacidade : 0;
     const over = pct > 1;
     return `
       <div class="gauge-card">
         ${gaugeSvg(pct, over)}
         <div class="gauge-info">
           <div class="gname">${r.name}</div>
-          <div class="gpct">${r.horas.toFixed(1)}h <span style="font-size:12px;color:var(--ink-faint);font-family:'IBM Plex Sans';">/ ${r.capacidade.toFixed(0)}h</span></div>
+          <div class="gpct">${horasExibir.toFixed(1)}h <span style="font-size:12px;color:var(--ink-faint);font-family:'IBM Plex Sans';">/ ${r.capacidade.toFixed(0)}h</span></div>
           <span class="badge ${over ? 'warn' : 'ok'}">${over ? 'Estoura' : 'Cabe'}</span>
           ${r.products.length ? `<div class="reactor-products">${r.products.map(p => {
             const reactorSt = getReactorStatus(p.produto, p.qty);
