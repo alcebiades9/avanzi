@@ -58,5 +58,5 @@ Painel HTML (GitHub Pages)
 
 ## 👤 Desenvolvido por
 
-**Alcebíades Correia** — Assistente Administrativo de Produção / PCP  
+**Alcebíades Correia** — Assistente Administrativo de Produção /
 Avanzi Química
