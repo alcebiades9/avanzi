@@ -390,12 +390,14 @@ const MONTH_NAMES = ['janeiro','fevereiro','março','abril','maio','junho','julh
 const DRIVE_FILE_ID = '1PQzp_5YeL3Aqhg5LKr0I7ncBW6HcHpm8';
 const DRIVE_URL = `https://docs.google.com/spreadsheets/d/${DRIVE_FILE_ID}/export?format=xlsx`;
 
-const loadDriveBtn = document.getElementById('loadDriveBtn');
-if(loadDriveBtn){
-  loadDriveBtn.addEventListener('click', () => loadFromDrive());
-  // Carrega automaticamente quando a página abre
-  loadFromDrive();
-}
+document.addEventListener('DOMContentLoaded', () => {
+  const loadDriveBtn = document.getElementById('loadDriveBtn');
+  if(loadDriveBtn){
+    loadDriveBtn.addEventListener('click', () => loadFromDrive());
+    // Carrega automaticamente quando a página abre
+    loadFromDrive();
+  }
+});
 
 reloadBtn.addEventListener('click', () => {
   dashboard.style.display = 'none';
