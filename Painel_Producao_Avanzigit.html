@@ -390,15 +390,6 @@ const MONTH_NAMES = ['janeiro','fevereiro','março','abril','maio','junho','julh
 const DRIVE_FILE_ID = '1PQzp_5YeL3Aqhg5LKr0I7ncBW6HcHpm8';
 const DRIVE_URL = `https://docs.google.com/spreadsheets/d/${DRIVE_FILE_ID}/export?format=xlsx`;
 
-document.addEventListener('DOMContentLoaded', () => {
-  const loadDriveBtn = document.getElementById('loadDriveBtn');
-  if(loadDriveBtn){
-    loadDriveBtn.addEventListener('click', () => loadFromDrive());
-    // Carrega automaticamente quando a página abre
-    loadFromDrive();
-  }
-});
-
 reloadBtn.addEventListener('click', () => {
   dashboard.style.display = 'none';
   dropzone.style.display = 'block';
@@ -445,6 +436,14 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     if(shared) shared.style.display = btn.dataset.tab === 'media' ? 'none' : 'block';
   });
 });
+
+// Botão carregar dados e auto-load
+const loadDriveBtn = document.getElementById('loadDriveBtn');
+if(loadDriveBtn){
+  loadDriveBtn.addEventListener('click', () => loadFromDrive());
+  // Carrega automaticamente quando a página abre
+  loadFromDrive();
+}
 
 function showError(msg){
   errorBox.innerHTML = '<div class="err">' + msg + '</div>';
