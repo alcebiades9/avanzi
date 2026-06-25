@@ -4,12 +4,6 @@ Sistema de Planejamento e Controle da Produção (PCP) desenvolvido para acompan
 
 ---
 
-## 🔗 Acesso
-
-> Melhor visualizado no computador. Compatível com celular e tablet.
-
----
-
 ## 📊 Funcionalidades
 
 - **Produção em tempo real** — status de cada reator (Em andamento, Finalizado, Planejado)
