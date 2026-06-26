@@ -964,10 +964,12 @@ function renderMateriasPrimas(mrpSheet, allRows){
     const saldo = estoque === null ? null : estoque - precisaJS;
     const nomeLow = nome.toLowerCase().trim();
     const minStock = MP_MIN_STOCK[nomeLow] !== undefined ? MP_MIN_STOCK[nomeLow] : 0;
+    const produzirList = ['base de betaina', 'less 27'];
+    const podeProdzir = produzirList.some(p => nomeLow.includes(p));
     let status;
     if(estoque === null) status = 'VERIFICAR';
     else if(saldo >= minStock) status = 'OK - TEM ESTOQUE';
-    else if(estoque > 0 && saldo >= 0) status = 'PRODUZIR!';
+    else if(podeProdzir && saldo >= 0) status = 'PRODUZIR!';
     else status = 'COMPRAR!';
     items.push({
       nome,
