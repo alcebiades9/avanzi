@@ -827,6 +827,42 @@ function renderMediaMensalFiltered(){
   </table>`;
 }
 
+const MP_MIN_STOCK = {
+  'acrylux': 390,
+  'alcool cetoestearilico': 20,
+  'antiespumante silicone mp': 1000,
+  'antiespumante vegetal mp': 1000,
+  'carnauba': 24,
+  'clorito 40': 5000,
+  'glicerina usp': 10000,
+  'metilato 30%': 199,
+  'oleo de mamona': 990,
+  'parafina macro': 24,
+  'bac 80': 500,
+  'monocloro acetato de sodio': 7000,
+  'oleo de coco': 2000,
+  'oleo de côco': 2000,
+  'alcool etilico 99': 3000,
+  'dmapa': 6000,
+  'oleo de palmiste rbd': 15000,
+  'glicerina branca bi destilada': 10000,
+  'hidroxido de potassio solido': 5000,
+  'less 70': 8000,
+  'butil glicol': 8000,
+  'clorito 31': 7000,
+  'dietanolamina 99': 10000,
+  'agua desmineralizada': 0,
+  'poliamina': 20,
+  'base de betaina': 2000,
+  'colorfloc 500': 500,
+  'aluminato de sodio': 0,
+  'acido acetico 99%': 5000,
+  'acido graxo de coco': 0,
+  'alcool polivinilico': 500,
+  'formaldeido 37%': 5000,
+  'less 27': 5000,
+};
+
 function renderMateriasPrimas(mrpSheet, allRows){
   const tbody = document.getElementById('mpTableBody');
   const summary = document.getElementById('mpSummary');
@@ -924,12 +960,21 @@ function renderMateriasPrimas(mrpSheet, allRows){
     if(!r || !r[0] || (r[0]||'').toString().trim() === '') break;
     const nome = r[0].toString().trim();
     const precisaJS = precisaCalc[nome.toLowerCase()] || 0;
+    const estoque = r[2] === null || r[2] === '' || r[2] === 'Verificar' ? null : Number(r[2]) || 0;
+    const saldo = estoque === null ? null : estoque - precisaJS;
+    const nomeLow = nome.toLowerCase().trim();
+    const minStock = MP_MIN_STOCK[nomeLow] !== undefined ? MP_MIN_STOCK[nomeLow] : 0;
+    let status;
+    if(estoque === null) status = 'VERIFICAR';
+    else if(saldo >= minStock) status = 'OK - TEM ESTOQUE';
+    else if(estoque > 0 && saldo >= 0) status = 'PRODUZIR!';
+    else status = 'COMPRAR!';
     items.push({
       nome,
       precisa: precisaJS,
-      estoque: r[2] === null || r[2] === '' || r[2] === 'Verificar' ? null : Number(r[2]) || 0,
-      saldo: r[2] === null ? null : (Number(r[2])||0) - precisaJS,
-      status: (r[4] || '').toString().trim()
+      estoque,
+      saldo,
+      status
     });
   }
 
