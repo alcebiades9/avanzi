@@ -638,7 +638,6 @@ function renderMonthBadge(){
   document.getElementById('clearMonthBtn').addEventListener('click', () => {
     selectedMonth = null;
     selectedWeek = null;
-    document.getElementById('clearWeekBtn').style.display = 'none';
     applyFilterAndRender();
   });
 }
