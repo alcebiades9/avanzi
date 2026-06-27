@@ -276,6 +276,7 @@
           <canvas id="trendChart" role="img" aria-label="Gráfico de linha mostrando quilos produzidos por mês ao longo do tempo">Tendência mensal de produção</canvas>
         </div>
       </div>
+
     </div><!-- /tab-panel producao -->
 
     <!-- seções compartilhadas: aparecem na aba Produção e Matéria-prima, somem na Média -->
@@ -289,6 +290,12 @@
           </button>
         </div>
         <div id="monthBadge" style="display:none;margin-bottom:14px;"></div>
+        <div id="weekFilterRow" style="display:none;margin-bottom:14px;align-items:center;gap:10px;">
+          <label style="font-size:13px;font-weight:500;color:var(--ink-soft);">Semana:</label>
+          <select id="weekSelect" style="font-size:13px;padding:4px 10px;border:1px solid #ccc;border-radius:6px;background:white;cursor:pointer;">
+            <option value="">Todas as semanas</option>
+          </select>
+        </div>
         <div class="filter-panel" id="filterPanel" style="display:none;">
           <div class="filter-actions">
             <button class="btn-ghost" id="checkAllBtn" type="button">Marcar todos</button>
@@ -384,6 +391,7 @@ let trendChartInstance = null;
 let allFinishedRows = [];
 let excludedProducts = new Set();
 let selectedMonth = null;
+let selectedWeek = null;
 let allMediaRows = [];
 const MONTH_NAMES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 
@@ -396,6 +404,13 @@ if(loadDriveBtn){
   // Carrega automaticamente quando a página abre
   loadFromDrive();
 }
+
+document.addEventListener('change', (e) => {
+  if(e.target.id === 'weekSelect'){
+    selectedWeek = e.target.value || null;
+    applyFilterAndRender();
+  }
+});
 
 reloadBtn.addEventListener('click', () => {
   dashboard.style.display = 'none';
@@ -552,12 +567,24 @@ function applyFilterAndRender(){
   const monthKeys = Object.keys(monthTotals).sort();
   renderTrend(monthKeys, monthKeys.map(k=>monthTotals[k]));
 
-  const listRows = selectedMonth ? checkboxFiltered.filter(r => {
+  // Filtrar por mês
+  const monthRows = selectedMonth ? checkboxFiltered.filter(r => {
     const d = r['DATA'];
     if(!(d instanceof Date) || isNaN(d)) return false;
     const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
     return key === selectedMonth;
   }) : checkboxFiltered;
+
+  // Atualizar dropdown de semanas
+  updateWeekFilter(checkboxFiltered, selectedMonth);
+
+  // Filtrar por semana dentro do mês
+  const listRows = selectedWeek && selectedMonth ? monthRows.filter(r => {
+    const d = r['DATA'];
+    if(!(d instanceof Date)||isNaN(d)) return false;
+    return 'Semana ' + Math.ceil(d.getDate()/7) === selectedWeek;
+  }) : monthRows;
+
 
   const prodTotals = {};
   listRows.forEach(r => {
@@ -610,6 +637,8 @@ function renderMonthBadge(){
   el.innerHTML = `<span class="month-badge">Mostrando: ${monthLabel(selectedMonth)} <button id="clearMonthBtn" type="button" aria-label="Limpar filtro de mês">&times;</button></span>`;
   document.getElementById('clearMonthBtn').addEventListener('click', () => {
     selectedMonth = null;
+    selectedWeek = null;
+    document.getElementById('clearWeekBtn').style.display = 'none';
     applyFilterAndRender();
   });
 }
@@ -676,6 +705,25 @@ function renderKpis(totalKg, numLotesReator, numLotesCTN, avgLoteReator, top){
       <div class="sub">${top ? fmtKg(top[1]) + ' kg no período' : 'Sem dados'}</div>
     </div>
   `;
+}
+
+function updateWeekFilter(rows, monthKey){
+  const row = document.getElementById('weekFilterRow');
+  const sel = document.getElementById('weekSelect');
+  if(!monthKey){ row.style.display='none'; selectedWeek=null; sel.value=''; return; }
+  // Descobrir semanas disponíveis no mês
+  const weeks = new Set();
+  rows.forEach(r => {
+    const d = r['DATA'];
+    if(!(d instanceof Date)||isNaN(d)) return;
+    const mKey = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    if(mKey !== monthKey) return;
+    weeks.add('Semana ' + Math.ceil(d.getDate()/7));
+  });
+  const sorted = Array.from(weeks).sort();
+  sel.innerHTML = '<option value="">Todas as semanas</option>' +
+    sorted.map(w => `<option value="${w}" ${w===selectedWeek?'selected':''}>${w}</option>`).join('');
+  row.style.display = 'flex';
 }
 
 function renderTrend(labels, values){
