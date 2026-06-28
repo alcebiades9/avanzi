@@ -9,6 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
   :root{
     --bg:#F6F3EC;
@@ -141,6 +143,23 @@
   .plan-total td:first-child{border-radius:0 0 0 8px;}
   .plan-total td:last-child{border-radius:0 0 8px 0;}
 
+
+  /* ── MODAL RELATÓRIO ── */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .modal-box{background:var(--surface);border-radius:16px;padding:32px;width:100%;max-width:420px;box-shadow:0 8px 40px rgba(0,0,0,0.18);}
+  .modal-box h3{font-size:18px;font-weight:700;margin-bottom:6px;color:var(--ink);}
+  .modal-box p{font-size:13px;color:var(--ink-soft);margin-bottom:20px;}
+  .modal-field{margin-bottom:16px;}
+  .modal-field label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;}
+  .modal-field select{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--ink);cursor:pointer;}
+  .modal-field select:focus{outline:none;border-color:var(--accent);}
+  .modal-actions{display:flex;gap:10px;margin-top:24px;}
+  .modal-actions .btn{flex:1;justify-content:center;}
+  .btn-pdf{background:var(--ink);color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;}
+  .btn-pdf:hover{background:#0d1a20;}
+  .btn-cancel{background:none;border:1.5px solid var(--border);padding:10px 20px;border-radius:8px;font-size:14px;color:var(--ink-soft);cursor:pointer;}
+  .btn-cancel:hover{background:var(--bg);}
+
   footer{margin-top:36px;text-align:center;font-size:12px;color:var(--ink-faint);}
 
   /* tabs */
@@ -239,7 +258,10 @@
       <h2>Painel de produção</h2>
       <p>Visão geral de volume produzido, tendência mensal, produtos líderes e capacidade dos reatores</p>
     </div>
-    <button class="btn btn-ghost" id="reloadBtn" style="display:none;">Atualizar dados</button>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button class="btn btn-ghost" id="reloadBtn" style="display:none;">Atualizar dados</button>
+      <button class="btn-pdf" id="relatorioBtn" style="display:none;" onclick="abrirModalRelatorio()">📄 Relatório Semanal</button>
+    </div>
   </div>
 
   <div id="errorBox"></div>
@@ -378,7 +400,31 @@
 
   </div>
 
-  <footer>Painel gerado localmente a partir da planilha de Produção e Controle &middot; Avanzi Química<br><span style="font-size:13px;opacity:0.9;font-weight:500;">Desenvolvido por Alcebíades Correia</span></footer>
+  <!-- MODAL RELATÓRIO -->
+<div id="modalRelatorio" style="display:none;" class="modal-overlay" onclick="if(event.target===this)fecharModal()">
+  <div class="modal-box">
+    <h3>📄 Relatório Semanal</h3>
+    <p>Escolha o mês e a semana para gerar o PDF</p>
+    <div class="modal-field">
+      <label>Mês</label>
+      <select id="modalMes" onchange="atualizarSemanasModal()">
+        <option value="">Selecione o mês...</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label>Semana</label>
+      <select id="modalSemana">
+        <option value="">Selecione a semana...</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+      <button class="btn-pdf" onclick="gerarRelatorioPDF()">⬇ Gerar PDF</button>
+    </div>
+  </div>
+</div>
+
+<footer>Painel gerado localmente a partir da planilha de Produção e Controle &middot; Avanzi Química<br><span style="font-size:13px;opacity:0.9;font-weight:500;">Desenvolvido por Alcebíades Correia</span></footer>
 </div>
 
 <script>
@@ -440,6 +486,7 @@ async function loadFromDrive(){
     reloadBtn.style.display = 'inline-flex';
     dashboard.style.display = 'block';
     document.getElementById('lastUpdate').textContent = new Date().toLocaleString('pt-BR');
+    document.getElementById('relatorioBtn').style.display = 'flex';
   }catch(err){
     console.error(err);
     showError('Não consegui carregar do Google Drive. Verifique se o arquivo está compartilhado como "Qualquer pessoa com o link pode ver". Erro: ' + err.message);
@@ -1412,6 +1459,205 @@ function renderReactors(crpSheet, allRows, mrpItems){
     `;
   }).join('');
 }
+
+// ── MODAL RELATÓRIO SEMANAL ─────────────────────────────────────────────────
+const MONTH_NAMES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+function abrirModalRelatorio(){
+  // Pegar meses disponíveis
+  const meses = new Set();
+  allFinishedRows.forEach(r => {
+    const d = r['DATA'];
+    if(!(d instanceof Date)||isNaN(d)) return;
+    meses.add(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
+  });
+  const sorted = Array.from(meses).sort().reverse(); // mais recente primeiro
+  const sel = document.getElementById('modalMes');
+  sel.innerHTML = '<option value="">Selecione o mês...</option>' +
+    sorted.map(m => {
+      const [ano, mes] = m.split('-');
+      return `<option value="${m}">${MONTH_NAMES_PT[parseInt(mes)-1]} de ${ano}</option>`;
+    }).join('');
+  // Pré-selecionar mês mais recente
+  if(sorted.length) { sel.value = sorted[0]; atualizarSemanasModal(); }
+  document.getElementById('modalRelatorio').style.display = 'flex';
+}
+
+function fecharModal(){
+  document.getElementById('modalRelatorio').style.display = 'none';
+}
+
+function atualizarSemanasModal(){
+  const mes = document.getElementById('modalMes').value;
+  const sel = document.getElementById('modalSemana');
+  if(!mes){ sel.innerHTML = '<option value="">Selecione a semana...</option>'; return; }
+  const semanas = new Set();
+  allFinishedRows.forEach(r => {
+    const d = r['DATA'];
+    if(!(d instanceof Date)||isNaN(d)) return;
+    const m = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    if(m !== mes) return;
+    semanas.add(Math.ceil(d.getDate()/7));
+  });
+  const sorted = Array.from(semanas).sort((a,b)=>a-b);
+  sel.innerHTML = '<option value="">Todas as semanas</option>' +
+    sorted.map(s => `<option value="${s}">Semana ${s}</option>`).join('');
+  if(sorted.length) sel.value = sorted[sorted.length-1]; // última semana
+}
+
+function gerarRelatorioPDF(){
+  const mes    = document.getElementById('modalMes').value;
+  const semana = document.getElementById('modalSemana').value;
+  if(!mes){ alert('Selecione o mês!'); return; }
+
+  const [ano, mesNum] = mes.split('-');
+  const mesNome = MONTH_NAMES_PT[parseInt(mesNum)-1] + ' de ' + ano;
+
+  // Filtrar linhas
+  let rows = allFinishedRows.filter(r => {
+    const d = r['DATA'];
+    if(!(d instanceof Date)||isNaN(d)) return false;
+    const m = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    return m === mes;
+  });
+  if(semana){
+    rows = rows.filter(r => Math.ceil(r['DATA'].getDate()/7) === parseInt(semana));
+  }
+
+  if(!rows.length){ alert('Nenhum dado encontrado para esse período!'); return; }
+
+  // Calcular dados
+  const prodTotals = {};
+  rows.forEach(r => {
+    const p = (r['PRODUTO']||'').toString().trim();
+    if(!p) return;
+    prodTotals[p] = (prodTotals[p]||0) + (Number(r['Quantidade_Produzida_kg'])||0);
+  });
+  const sorted = Object.entries(prodTotals).sort((a,b)=>b[1]-a[1]);
+  const totalKg = sorted.reduce((s,[,v])=>s+v, 0);
+  const totalLotes = rows.length;
+
+  // Datas
+  const datas = rows.map(r=>r['DATA']).sort((a,b)=>a-b);
+  const dtIni = datas[0].toLocaleDateString('pt-BR');
+  const dtFim = datas[datas.length-1].toLocaleDateString('pt-BR');
+  const titulo_periodo = semana ? `Semana ${semana} — ${mesNome}` : `Mês completo — ${mesNome}`;
+
+  // ── GERAR PDF ──
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const W = 210, margem = 18;
+  const util = W - margem*2;
+  let y = 18;
+
+  // Cores
+  const COR_DARK  = [24, 38, 47];
+  const COR_ACENT = [217, 119, 6];
+  const COR_CINZA = [86, 102, 111];
+  const COR_FUNDO = [245, 240, 232];
+  const COR_VERDE = [42, 157, 92];
+  const COR_VERM  = [192, 57, 43];
+
+  // Cabeçalho
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(20);
+  doc.setTextColor(...COR_DARK);
+  doc.text('AVANZI QUÍMICA', W/2, y, {align:'center'}); y += 8;
+
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(13);
+  doc.setTextColor(...COR_ACENT);
+  doc.text('Relatório Semanal de Produção', W/2, y, {align:'center'}); y += 7;
+
+  doc.setFontSize(10);
+  doc.setTextColor(...COR_CINZA);
+  doc.text(`${titulo_periodo}   ·   ${dtIni} a ${dtFim}`, W/2, y, {align:'center'}); y += 5;
+
+  // Linha laranja
+  doc.setDrawColor(...COR_ACENT);
+  doc.setLineWidth(0.8);
+  doc.line(margem, y, W-margem, y); y += 10;
+
+  // KPIs em caixas
+  const kpiW = util/3;
+  const kpis = [
+    { val: totalKg.toLocaleString('pt-BR') + ' kg', label: 'Total produzido' },
+    { val: String(totalLotes), label: 'Lotes finalizados' },
+    { val: String(sorted.length), label: 'Produtos diferentes' },
+  ];
+  kpis.forEach((k, i) => {
+    const x = margem + i*kpiW;
+    doc.setFillColor(...COR_FUNDO);
+    doc.roundedRect(x, y, kpiW-2, 20, 3, 3, 'F');
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(14);
+    doc.setTextColor(...COR_DARK);
+    doc.text(k.val, x + kpiW/2 - 1, y+9, {align:'center'});
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...COR_CINZA);
+    doc.text(k.label, x + kpiW/2 - 1, y+15, {align:'center'});
+  });
+  y += 26;
+
+  // Tabela de produtos
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(12);
+  doc.setTextColor(...COR_DARK);
+  doc.text('Produtos produzidos', margem, y); y += 4;
+  doc.setDrawColor(226,220,203);
+  doc.setLineWidth(0.3);
+  doc.line(margem, y, W-margem, y); y += 4;
+
+  const prodRows = sorted.map(([prod, kg], i) => [
+    String(i+1),
+    prod,
+    kg.toLocaleString('pt-BR'),
+    ((kg/totalKg)*100).toFixed(1) + '%'
+  ]);
+  prodRows.push(['', 'TOTAL', totalKg.toLocaleString('pt-BR'), '100%']);
+
+  doc.autoTable({
+    startY: y,
+    head: [['#','Produto','kg','%']],
+    body: prodRows,
+    margin: {left: margem, right: margem},
+    headStyles: { fillColor: COR_DARK, textColor: [255,255,255], fontStyle:'bold', fontSize:9 },
+    bodyStyles: { fontSize:9, textColor: COR_DARK },
+    alternateRowStyles: { fillColor: [249,246,240] },
+    columnStyles: {
+      0: {cellWidth:10, halign:'center'},
+      2: {halign:'right', fontStyle:'bold'},
+      3: {halign:'right', textColor:COR_CINZA},
+    },
+    didParseCell: (data) => {
+      if(data.row.index === prodRows.length-1){
+        data.cell.styles.fillColor = [237,232,220];
+        data.cell.styles.fontStyle = 'bold';
+        if(data.column.index===2) data.cell.styles.textColor = COR_ACENT;
+      }
+    }
+  });
+
+  // Rodapé
+  const pY = doc.internal.pageSize.height - 12;
+  doc.setDrawColor(226,220,203);
+  doc.setLineWidth(0.3);
+  doc.line(margem, pY-4, W-margem, pY-4);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...COR_CINZA);
+  const agora = new Date().toLocaleString('pt-BR');
+  doc.text(`Gerado em ${agora}   ·   Avanzi Química   ·   Desenvolvido por Alcebíades Correia`, W/2, pY, {align:'center'});
+
+  // Baixar
+  const nomePDF = semana
+    ? `relatorio_semana${semana}_${mes}.pdf`
+    : `relatorio_${mes}.pdf`;
+  doc.save(nomePDF);
+  fecharModal();
+}
+
 </script>
 </body>
 </html>
