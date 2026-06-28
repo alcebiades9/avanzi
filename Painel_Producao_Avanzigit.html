@@ -1873,11 +1873,12 @@ function gerarRelatorioGerencial(){
     ? (variacao >= 0 ? '(+) ' + variacao.toFixed(1) + '%' : '(-) ' + variacao.toFixed(1) + '%')
     : '—';
   const varCor = variacao === null ? COR_CINZA : (variacao >= 0 ? COR_OK : COR_VERM);
+  const mesANome = mesA ? MONTH_NAMES_PT[parseInt(mesA.split('-')[1])-1] : '';
 
+  // KPIs linha 1: Total atual + Lotes
   const kpis = [
     { val: totalKg.toLocaleString('pt-BR') + ' kg', label: 'Total produzido', cor: COR_DARK },
     { val: String(totalLotes), label: 'Lotes finalizados', cor: COR_DARK },
-    { val: varTexto, label: mesA ? `vs ${MONTH_NAMES_PT[parseInt(mesA.split('-')[1])-1]}` : 'Comparativo', cor: varCor },
   ];
   kpis.forEach((k, i) => {
     const x = margem + i*kpiW;
@@ -1892,6 +1893,26 @@ function gerarRelatorioGerencial(){
     doc.setTextColor(...COR_CINZA);
     doc.text(k.label, x+kpiW/2-1, y+17, {align:'center'});
   });
+
+  // Card comparativo — ocupa o terceiro espaço com 3 linhas
+  const xComp = margem + 2*kpiW;
+  doc.setFillColor(...COR_FUNDO);
+  doc.roundedRect(xComp, y, kpiW-2, 22, 3, 3, 'F');
+  // Linha 1: mês anterior
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...COR_CINZA);
+  doc.text(mesANome + ': ' + totalAnt.toLocaleString('pt-BR') + ' kg', xComp+kpiW/2-1, y+7, {align:'center'});
+  // Linha 2: variação em destaque
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(13);
+  doc.setTextColor(...varCor);
+  doc.text(varTexto, xComp+kpiW/2-1, y+15, {align:'center'});
+  // Linha 3: label
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(7);
+  doc.setTextColor(...COR_CINZA);
+  doc.text('vs mes anterior', xComp+kpiW/2-1, y+20, {align:'center'});
   y += 28;
 
   // ── QUALIDADE ──
