@@ -1518,10 +1518,12 @@ function gerarRelatorioPDF(){
 
   // Calcular dados
   const prodTotals = {};
+  const prodLotes = {};
   rows.forEach(r => {
     const p = (r['PRODUTO']||'').toString().trim();
     if(!p) return;
     prodTotals[p] = (prodTotals[p]||0) + (Number(r['Quantidade_Produzida_kg'])||0);
+    prodLotes[p]  = (prodLotes[p]||0) + 1;
   });
   const sorted = Object.entries(prodTotals).sort((a,b)=>b[1]-a[1]);
   const totalKg = sorted.reduce((s,[,v])=>s+v, 0);
@@ -1604,14 +1606,15 @@ function gerarRelatorioPDF(){
   const prodRows = sorted.map(([prod, kg], i) => [
     String(i+1),
     prod,
+    String(prodLotes[prod]||0),
     kg.toLocaleString('pt-BR'),
     ((kg/totalKg)*100).toFixed(1) + '%'
   ]);
-  prodRows.push(['', 'TOTAL', totalKg.toLocaleString('pt-BR'), '100%']);
+  prodRows.push(['', 'TOTAL', String(totalLotes), totalKg.toLocaleString('pt-BR'), '100%']);
 
   doc.autoTable({
     startY: y,
-    head: [['#','Produto','kg','%']],
+    head: [['#','Produto','Lotes','kg','%']],
     body: prodRows,
     margin: {left: margem, right: margem},
     headStyles: { fillColor: COR_DARK, textColor: [255,255,255], fontStyle:'bold', fontSize:9 },
@@ -1619,14 +1622,15 @@ function gerarRelatorioPDF(){
     alternateRowStyles: { fillColor: [249,246,240] },
     columnStyles: {
       0: {cellWidth:10, halign:'center'},
-      2: {halign:'right', fontStyle:'bold'},
-      3: {halign:'right', textColor:COR_CINZA},
+      2: {cellWidth:16, halign:'center'},
+      3: {cellWidth:32, halign:'right', fontStyle:'bold'},
+      4: {cellWidth:18, halign:'right', textColor:COR_CINZA},
     },
     didParseCell: (data) => {
       if(data.row.index === prodRows.length-1){
         data.cell.styles.fillColor = [237,232,220];
         data.cell.styles.fontStyle = 'bold';
-        if(data.column.index===2) data.cell.styles.textColor = COR_ACENT;
+        if(data.column.index===3) data.cell.styles.textColor = COR_ACENT;
       }
     }
   });
@@ -1669,8 +1673,8 @@ function gerarRelatorioPDF(){
       bodyStyles: { fontSize:9, textColor: COR_DARK },
       alternateRowStyles: { fillColor: [249,246,240] },
       columnStyles: {
-        1: {halign:'right', cellWidth:35},
-        2: {halign:'center', fontStyle:'bold', cellWidth:35},
+        1: {halign:'right', cellWidth:32},
+        2: {halign:'center', fontStyle:'bold', cellWidth:28},
       },
       didParseCell: (data) => {
         if(data.column.index === 2 && data.section === 'body'){
