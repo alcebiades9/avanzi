@@ -1580,19 +1580,21 @@ function gerarRelatorioPDF(){
   doc.line(margem, y, W-margem, y); y += 10;
 
   // KPIs em caixas
-  const kpiW = util/3;
+  const kpiW = util/4;
+  const nComprarMP = (window._mpItems||[]).filter(i=>i.status.includes('COMPRAR')).length;
   const kpis = [
-    { val: totalKg.toLocaleString('pt-BR') + ' kg', label: 'Total produzido' },
-    { val: String(totalLotes), label: 'Lotes finalizados' },
-    { val: String(sorted.length), label: 'Produtos diferentes' },
+    { val: totalKg.toLocaleString('pt-BR') + ' kg', label: 'Total produzido', cor: COR_DARK },
+    { val: String(totalLotes), label: 'Lotes finalizados', cor: COR_DARK },
+    { val: String(sorted.length), label: 'Produtos diferentes', cor: COR_DARK },
+    { val: String(nComprarMP), label: 'MPs para comprar', cor: nComprarMP > 0 ? COR_VERM : COR_VERDE },
   ];
   kpis.forEach((k, i) => {
     const x = margem + i*kpiW;
     doc.setFillColor(...COR_FUNDO);
     doc.roundedRect(x, y, kpiW-2, 20, 3, 3, 'F');
     doc.setFont('helvetica','bold');
-    doc.setFontSize(14);
-    doc.setTextColor(...COR_DARK);
+    doc.setFontSize(13);
+    doc.setTextColor(...k.cor);
     doc.text(k.val, x + kpiW/2 - 1, y+9, {align:'center'});
     doc.setFont('helvetica','normal');
     doc.setFontSize(8);
@@ -1666,34 +1668,26 @@ function gerarRelatorioPDF(){
     const mpRows = mpAlerta.map(mp => [
       mp.nome,
       mp.estoque !== null ? mp.estoque.toLocaleString('pt-BR') : '—',
-      mp.precisa > 0 ? mp.precisa.toLocaleString('pt-BR') : '—',
-      mp.saldo !== null ? mp.saldo.toLocaleString('pt-BR') : '—',
-      mp.status
+      mp.status.includes('COMPRAR') ? 'COMPRAR' : 'PRODUZIR'
     ]);
 
     doc.autoTable({
       startY: y,
-      head: [['Matéria-prima', 'Estoque (kg)', 'Precisa (kg)', 'Saldo (kg)', 'Status']],
+      head: [['Matéria-prima', 'Estoque (kg)', 'Ação']],
       body: mpRows,
       margin: {left: margem, right: margem},
       headStyles: { fillColor: COR_DARK, textColor:[255,255,255], fontStyle:'bold', fontSize:9 },
       bodyStyles: { fontSize:9, textColor: COR_DARK },
       alternateRowStyles: { fillColor: [249,246,240] },
       columnStyles: {
-        1: {halign:'right'},
-        2: {halign:'right'},
-        3: {halign:'right'},
-        4: {halign:'center', fontStyle:'bold'},
+        1: {halign:'right', cellWidth:35},
+        2: {halign:'center', fontStyle:'bold', cellWidth:35},
       },
       didParseCell: (data) => {
-        if(data.column.index === 4 && data.section === 'body'){
+        if(data.column.index === 2 && data.section === 'body'){
           const v = data.cell.raw || '';
-          if(v.includes('COMPRAR')) data.cell.styles.textColor = COR_VERM;
-          else if(v.includes('PRODUZIR')) data.cell.styles.textColor = [83,74,183];
-        }
-        if(data.column.index === 3 && data.section === 'body'){
-          const v = parseFloat((data.cell.raw||'').toString().replace(/\./g,'').replace(',','.'));
-          if(!isNaN(v) && v < 0) data.cell.styles.textColor = COR_VERM;
+          if(v === 'COMPRAR') data.cell.styles.textColor = COR_VERM;
+          else data.cell.styles.textColor = [83,74,183];
         }
       }
     });
