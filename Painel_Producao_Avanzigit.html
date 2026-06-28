@@ -1614,19 +1614,19 @@ function gerarRelatorioPDF(){
 
   doc.autoTable({
     startY: y,
-    tableWidth: util,
     head: [['#','Produto','Lotes','kg','%']],
     body: prodRows,
     margin: {left: margem, right: margem},
+    tableWidth: 'wrap',
     headStyles: { fillColor: COR_DARK, textColor: [255,255,255], fontStyle:'bold', fontSize:9 },
     bodyStyles: { fontSize:9, textColor: COR_DARK },
     alternateRowStyles: { fillColor: [249,246,240] },
     columnStyles: {
       0: {cellWidth:10,  halign:'center'},
-      1: {cellWidth:'auto', halign:'left'},
+      1: {cellWidth:90,  halign:'left'},
       2: {cellWidth:18,  halign:'center'},
-      3: {cellWidth:36,  halign:'right', fontStyle:'bold'},
-      4: {cellWidth:20,  halign:'right', textColor:COR_CINZA},
+      3: {cellWidth:38,  halign:'right', fontStyle:'bold'},
+      4: {cellWidth:18,  halign:'right', textColor:COR_CINZA},
     },
     didParseCell: (data) => {
       if(data.row.index === prodRows.length-1){
@@ -1668,17 +1668,17 @@ function gerarRelatorioPDF(){
 
     doc.autoTable({
       startY: y,
-      tableWidth: util,
       head: [['Matéria-prima', 'Estoque (kg)', 'Ação']],
       body: mpRows,
       margin: {left: margem, right: margem},
+      tableWidth: 'wrap',
       headStyles: { fillColor: COR_DARK, textColor:[255,255,255], fontStyle:'bold', fontSize:9 },
       bodyStyles: { fontSize:9, textColor: COR_DARK },
       alternateRowStyles: { fillColor: [249,246,240] },
       columnStyles: {
-        0: {cellWidth:'auto', halign:'left'},
-        1: {cellWidth:36,  halign:'right'},
-        2: {cellWidth:30,  halign:'center', fontStyle:'bold'},
+        0: {cellWidth:110, halign:'left'},
+        1: {cellWidth:38,  halign:'right'},
+        2: {cellWidth:26,  halign:'center', fontStyle:'bold'},
       },
       didParseCell: (data) => {
         if(data.column.index === 2 && data.section === 'body'){
