@@ -259,7 +259,7 @@
       <p>Visão geral de volume produzido, tendência mensal, produtos líderes e capacidade dos reatores</p>
     </div>
     <div style="display:flex;gap:10px;align-items:center;">
-      <button class="btn btn-ghost" id="reloadBtn" style="display:none;">Atualizar dados</button>
+
       <button class="btn-pdf" id="relatorioBtn" style="display:none;" onclick="abrirModalRelatorio()">📄 Relatório Semanal</button>
     </div>
   </div>
@@ -431,7 +431,7 @@
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('fileInput');
 const dashboard = document.getElementById('dashboard');
-const reloadBtn = document.getElementById('reloadBtn');
+
 const errorBox = document.getElementById('errorBox');
 let trendChartInstance = null;
 let allFinishedRows = [];
@@ -458,18 +458,7 @@ document.addEventListener('change', (e) => {
   }
 });
 
-reloadBtn.addEventListener('click', () => {
-  dashboard.style.display = 'none';
-  dropzone.style.display = 'block';
-  reloadBtn.style.display = 'none';
-  errorBox.innerHTML = '';
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.querySelector('.tab-btn[data-tab="producao"]').classList.add('active');
-  document.getElementById('tab-producao').classList.add('active');
-  const shared = document.getElementById('sharedSections');
-  if(shared) shared.style.display = 'block';
-});
+
 
 async function loadFromDrive(){
   const btn = document.getElementById('loadDriveBtn');
@@ -483,7 +472,7 @@ async function loadFromDrive(){
     const wb = XLSX.read(data, {type:'array', cellDates:true});
     processWorkbook(wb);
     dropzone.style.display = 'none';
-    reloadBtn.style.display = 'inline-flex';
+    
     dashboard.style.display = 'block';
     document.getElementById('lastUpdate').textContent = new Date().toLocaleString('pt-BR');
     document.getElementById('relatorioBtn').style.display = 'flex';
