@@ -1759,7 +1759,7 @@ function gerarRelatorioPDF(){
 // ── RELATÓRIO GERENCIAL MENSAL ───────────────────────────────────────────────
 function abrirModalGerencial(){
   const meses = new Set();
-  allRows.forEach(r => {
+  allFinishedRows.forEach(r => {
     const d = r['DATA'];
     if(!(d instanceof Date)||isNaN(d)) return;
     meses.add(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
@@ -1792,7 +1792,7 @@ function gerarRelatorioGerencial(){
   const mesNome = MONTH_NAMES_PT[parseInt(mesNum)-1] + ' de ' + ano;
 
   // Filtrar linhas do mês selecionado
-  const rowsMes = allRows.filter(r => {
+  const rowsMes = allFinishedRows.filter(r => {
     const d = r['DATA'];
     if(!(d instanceof Date)||isNaN(d)) return false;
     return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0') === mes;
@@ -1802,7 +1802,7 @@ function gerarRelatorioGerencial(){
   const finMes = rowsMes.filter(r => (r['Status']||'').toString().toUpperCase().trim() === 'FINALIZADO');
 
   // Mês anterior
-  const finAnt = mesA ? allRows.filter(r => {
+  const finAnt = mesA ? allFinishedRows.filter(r => {
     const d = r['DATA'];
     if(!(d instanceof Date)||isNaN(d)) return false;
     const m = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
