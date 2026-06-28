@@ -1691,6 +1691,14 @@ function gerarRelatorioPDF(){
         }
       }
     });
+
+    // Nota sobre estoque atual
+    const notaY = doc.lastAutoTable.finalY + 5;
+    doc.setFont('helvetica','italic');
+    doc.setFontSize(8);
+    doc.setTextColor(...COR_CINZA);
+    const hoje = new Date().toLocaleDateString('pt-BR');
+    doc.text(`* Estoque consultado em ${hoje} — situação atual no momento da geração do relatório.`, margem, notaY);
   }
 
   // Rodapé
