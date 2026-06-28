@@ -80,7 +80,7 @@ Planta baixa técnica da área de produção disponível para impressão, com:
 - Localização dos reatores, boilers, tanques e equipamentos
 - Áreas de movimentação, estufas e porta paletes
 
-📥 **[Abrir / Baixar Planta Baixa da Produção](planta_producao_avanzi.html)**
+📥 **https://alcebiades9.github.io/avanzi/planta_producao_avanzi.html**
 
 ---
 
