@@ -1621,10 +1621,11 @@ function gerarRelatorioPDF(){
     bodyStyles: { fontSize:9, textColor: COR_DARK },
     alternateRowStyles: { fillColor: [249,246,240] },
     columnStyles: {
-      0: {cellWidth:10, halign:'center'},
-      2: {cellWidth:16, halign:'center'},
-      3: {cellWidth:32, halign:'right', fontStyle:'bold'},
-      4: {cellWidth:18, halign:'right', textColor:COR_CINZA},
+      0: {cellWidth:10,  halign:'center'},
+      1: {cellWidth:96,  halign:'left'},
+      2: {cellWidth:16,  halign:'center'},
+      3: {cellWidth:34,  halign:'right', fontStyle:'bold'},
+      4: {cellWidth:18,  halign:'right', textColor:COR_CINZA},
     },
     didParseCell: (data) => {
       if(data.row.index === prodRows.length-1){
@@ -1673,8 +1674,9 @@ function gerarRelatorioPDF(){
       bodyStyles: { fontSize:9, textColor: COR_DARK },
       alternateRowStyles: { fillColor: [249,246,240] },
       columnStyles: {
-        1: {halign:'right', cellWidth:32},
-        2: {halign:'center', fontStyle:'bold', cellWidth:28},
+        0: {cellWidth:114, halign:'left'},
+        1: {cellWidth:32,  halign:'right'},
+        2: {cellWidth:28,  halign:'center', fontStyle:'bold'},
       },
       didParseCell: (data) => {
         if(data.column.index === 2 && data.section === 'body'){
