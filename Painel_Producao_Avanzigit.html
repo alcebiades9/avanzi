@@ -1870,7 +1870,7 @@ function gerarRelatorioGerencial(){
 
   const kpiW = util/3;
   const varTexto = variacao !== null
-    ? (variacao >= 0 ? `▲ +${variacao.toFixed(1)}%` : `▼ ${variacao.toFixed(1)}%`)
+    ? (variacao >= 0 ? '▲ +' + variacao.toFixed(1) + '%' : '▼ ' + variacao.toFixed(1) + '%')
     : '—';
   const varCor = variacao === null ? COR_CINZA : (variacao >= 0 ? COR_OK : COR_VERM);
 
