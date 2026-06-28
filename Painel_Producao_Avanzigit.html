@@ -1075,6 +1075,7 @@ function renderMateriasPrimas(mrpSheet, allRows){
   }
 
   if(!items.length){ tbody.innerHTML = '<tr><td colspan="5" style="color:var(--ink-soft);">Sem dados de matéria-prima.</td></tr>'; return; }
+  window._mpItems = items; // salvar globalmente para o relatório PDF
 
   const nComprar = items.filter(i=>i.status.includes('COMPRAR')).length;
   const nProduzir = items.filter(i=>i.status.includes('PRODUZIR')).length;
@@ -1638,6 +1639,65 @@ function gerarRelatorioPDF(){
       }
     }
   });
+
+  // ── SEÇÃO MPs A COMPRAR ──
+  const mpComprar = (window._mpItems || []).filter(i => i.status.includes('COMPRAR'));
+  const mpProduzir = (window._mpItems || []).filter(i => i.status.includes('PRODUZIR'));
+  const mpAlerta = [...mpComprar, ...mpProduzir];
+
+  if(mpAlerta.length){
+    // Verificar se precisa de nova página
+    const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY : y;
+    if(finalY + 50 > doc.internal.pageSize.height - 20){
+      doc.addPage();
+      y = 18;
+    } else {
+      y = finalY + 10;
+    }
+
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(12);
+    doc.setTextColor(...COR_DARK);
+    doc.text('Matérias-primas — Ação necessária', margem, y); y += 4;
+    doc.setDrawColor(226,220,203);
+    doc.setLineWidth(0.3);
+    doc.line(margem, y, W-margem, y); y += 4;
+
+    const mpRows = mpAlerta.map(mp => [
+      mp.nome,
+      mp.estoque !== null ? mp.estoque.toLocaleString('pt-BR') : '—',
+      mp.precisa > 0 ? mp.precisa.toLocaleString('pt-BR') : '—',
+      mp.saldo !== null ? mp.saldo.toLocaleString('pt-BR') : '—',
+      mp.status
+    ]);
+
+    doc.autoTable({
+      startY: y,
+      head: [['Matéria-prima', 'Estoque (kg)', 'Precisa (kg)', 'Saldo (kg)', 'Status']],
+      body: mpRows,
+      margin: {left: margem, right: margem},
+      headStyles: { fillColor: COR_DARK, textColor:[255,255,255], fontStyle:'bold', fontSize:9 },
+      bodyStyles: { fontSize:9, textColor: COR_DARK },
+      alternateRowStyles: { fillColor: [249,246,240] },
+      columnStyles: {
+        1: {halign:'right'},
+        2: {halign:'right'},
+        3: {halign:'right'},
+        4: {halign:'center', fontStyle:'bold'},
+      },
+      didParseCell: (data) => {
+        if(data.column.index === 4 && data.section === 'body'){
+          const v = data.cell.raw || '';
+          if(v.includes('COMPRAR')) data.cell.styles.textColor = COR_VERM;
+          else if(v.includes('PRODUZIR')) data.cell.styles.textColor = [83,74,183];
+        }
+        if(data.column.index === 3 && data.section === 'body'){
+          const v = parseFloat((data.cell.raw||'').toString().replace(/\./g,'').replace(',','.'));
+          if(!isNaN(v) && v < 0) data.cell.styles.textColor = COR_VERM;
+        }
+      }
+    });
+  }
 
   // Rodapé
   const pY = doc.internal.pageSize.height - 12;
