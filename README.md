@@ -14,7 +14,9 @@ Sistema de Planejamento e Controle da Produção (PCP) desenvolvido para acompan
 - **Gráfico de evolução mensal** — tendência de volume produzido com filtro por mês e por semana
 - **Histórico completo** — mais de 1 ano de registros de produção disponíveis para consulta
 - **Relatório Semanal em PDF** — gerado diretamente pelo painel com um clique, escolhendo mês e semana
+- **Relatório Gerencial em PDF** — resumo mensal com produtividade, comparativo, qualidade e ranking de produtos
 - **Alerta de MP crítica por e-mail** — script Python envia e-mail automático quando alguma matéria-prima está abaixo do estoque mínimo
+- **Rastreabilidade de lote** — campo de número de OS vinculado ao GestaoPro no Registro de Produção
 - **Atualização automática** — recarrega os dados a cada 3 minutos
 
 ---
@@ -72,6 +74,18 @@ O painel possui um botão **"📄 Relatório Semanal"** que gera automaticamente
 - Data e hora de geração
 
 Basta escolher o mês e a semana desejados — sem precisar de Python ou terminal.
+
+---
+
+## 📊 Relatório Gerencial em PDF
+
+O painel possui um botão **"📊 Relatório Gerencial"** que gera um resumo mensal com:
+
+- **Produtividade** — total produzido em kg, lotes finalizados e comparativo com o mês anterior
+- **Qualidade** — lotes conformes, não conformes e taxa de conformidade
+- **Ranking de produtos** — todos os produtos produzidos no mês com lotes, kg e % do total
+
+Basta escolher o mês e o mês anterior para comparativo — sem precisar de Python ou terminal.
 
 ---
 
