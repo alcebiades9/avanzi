@@ -224,6 +224,52 @@
   }
   .theme-toggle:hover{border-color:var(--ink-soft);}
 
+  /* ── SIDEBAR MENU ── */
+  .sidebar-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;
+    opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s;
+  }
+  .sidebar-overlay.open{opacity:1;visibility:visible;}
+  .sidebar{
+    position:fixed;top:0;left:0;width:280px;height:100%;background:var(--surface);
+    z-index:2001;transform:translateX(-100%);transition:transform .3s ease;
+    display:flex;flex-direction:column;overflow-y:auto;
+    border-right:1px solid var(--line);
+  }
+  .sidebar.open{transform:translateX(0);}
+  .sidebar-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 20px;border-bottom:1px solid var(--line);
+  }
+  .sidebar-header .sidebar-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;}
+  .sidebar-close{background:none;border:none;font-size:22px;color:var(--ink-soft);cursor:pointer;padding:4px 8px;border-radius:6px;}
+  .sidebar-close:hover{background:var(--bg);color:var(--ink);}
+  .sidebar-section{padding:12px 0;border-bottom:1px solid var(--line);}
+  .sidebar-section:last-child{border-bottom:none;}
+  .sidebar-section-label{
+    font-size:11px;text-transform:uppercase;letter-spacing:0.08em;
+    color:var(--ink-faint);padding:8px 20px 6px;font-weight:600;
+  }
+  .sidebar-item{
+    display:flex;align-items:center;gap:14px;padding:11px 20px;
+    font-size:14px;font-weight:500;color:var(--ink);cursor:pointer;
+    text-decoration:none;border:none;background:none;width:100%;
+    transition:background .15s;
+  }
+  .sidebar-item:hover{background:var(--bg);}
+  .sidebar-item .si-icon{font-size:18px;width:24px;text-align:center;flex-shrink:0;}
+  .sidebar-item .si-label{flex:1;}
+  .sidebar-item .si-toggle{
+    font-size:12px;color:var(--ink-faint);background:var(--bg);
+    padding:3px 10px;border-radius:6px;
+  }
+  .hamburger{
+    background:none;border:1px solid var(--line);border-radius:10px;
+    padding:8px 12px;font-size:20px;cursor:pointer;color:var(--ink);
+    display:flex;align-items:center;transition:background .15s,border-color .15s;
+  }
+  .hamburger:hover{background:var(--bg);border-color:var(--ink-soft);}
+
   /* tabs */
   .tabs{display:flex;gap:4px;margin-bottom:24px;border-bottom:2px solid var(--line);padding-bottom:0;}
   .tab-btn{background:none;border:none;padding:10px 20px;font-size:14px;font-weight:500;color:var(--ink-soft);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;}
@@ -300,6 +346,46 @@
 </style>
 </head>
 <body>
+
+<!-- SIDEBAR MENU -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <span class="sidebar-title">Menu</span>
+    <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Relatórios</div>
+    <button class="sidebar-item" id="sidebarRelatorio" onclick="closeSidebar();abrirModalRelatorio()">
+      <span class="si-icon">📄</span>
+      <span class="si-label">Relatório Semanal</span>
+    </button>
+    <button class="sidebar-item" id="sidebarGerencial" onclick="closeSidebar();abrirModalGerencial()">
+      <span class="si-icon">📊</span>
+      <span class="si-label">Relatório Gerencial</span>
+    </button>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Links</div>
+    <a class="sidebar-item" href="https://alcebiades9.github.io/avanzi/planta_producao_avanzi_final.pdf" target="_blank">
+      <span class="si-icon">🏭</span>
+      <span class="si-label">Planta de Produção</span>
+    </a>
+    <a class="sidebar-item" href="https://github.com/alcebiades9/avanzi" target="_blank">
+      <span class="si-icon">📖</span>
+      <span class="si-label">Documentação (README)</span>
+    </a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Aparência</div>
+    <button class="sidebar-item" onclick="toggleTheme()">
+      <span class="si-icon" id="themeIconSidebar">🌙</span>
+      <span class="si-label">Modo escuro</span>
+      <span class="si-toggle" id="themeStatusSidebar">Desligado</span>
+    </button>
+  </div>
+</nav>
+
 <div class="wrap">
 
   <div class="topbar">
@@ -314,7 +400,7 @@
         <div class="label">Última atualização</div>
         <div id="lastUpdate">—</div>
       </div>
-      <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Alternar modo claro/escuro">🌙</button>
+      <button class="hamburger" onclick="openSidebar()" title="Abrir menu">☰</button>
     </div>
   </div>
 
@@ -322,11 +408,6 @@
     <div>
       <h2>Painel de produção</h2>
       <p>Visão geral de volume produzido, tendência mensal, produtos líderes e capacidade dos reatores</p>
-    </div>
-    <div style="display:flex;gap:10px;align-items:center;">
-
-      <button class="btn-pdf" id="relatorioBtn" style="display:none;" onclick="abrirModalRelatorio()">📄 Relatório Semanal</button>
-      <button class="btn-pdf" id="gerencialBtn" style="display:none;background:var(--gerencial-bg);" onclick="abrirModalGerencial()">📊 Relatório Gerencial</button>
     </div>
   </div>
 
@@ -521,8 +602,11 @@
 // ── DARK MODE ──
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
-  const btn = document.getElementById('themeToggle');
-  if (btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+  const isDark = theme === 'dark';
+  const iconEl = document.getElementById('themeIconSidebar');
+  const statusEl = document.getElementById('themeStatusSidebar');
+  if (iconEl) iconEl.textContent = isDark ? '☀️' : '🌙';
+  if (statusEl) statusEl.textContent = isDark ? 'Ligado' : 'Desligado';
   localStorage.setItem('painel-avanzi-theme', theme);
 }
 function toggleTheme() {
@@ -537,6 +621,16 @@ function toggleTheme() {
   const saved = localStorage.getItem('painel-avanzi-theme');
   if (saved) applyTheme(saved);
 })();
+
+// ── SIDEBAR ──
+function openSidebar() {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sidebarOverlay').classList.add('open');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('open');
+}
 
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('fileInput');
@@ -585,8 +679,6 @@ async function loadFromDrive(){
     
     dashboard.style.display = 'block';
     document.getElementById('lastUpdate').textContent = new Date().toLocaleString('pt-BR');
-    document.getElementById('relatorioBtn').style.display = 'flex';
-    document.getElementById('gerencialBtn').style.display = 'flex';
   }catch(err){
     console.error(err);
     showError('Não consegui carregar do Google Drive. Verifique se o arquivo está compartilhado como "Qualquer pessoa com o link pode ver". Erro: ' + err.message);
