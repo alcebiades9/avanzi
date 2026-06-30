@@ -210,7 +210,7 @@
   .modal-field select:focus{outline:none;border-color:var(--accent);}
   .modal-actions{display:flex;gap:10px;margin-top:24px;}
   .modal-actions .btn{flex:1;justify-content:center;}
-  .btn-pdf{background:var(--ink);color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;}
+  .btn-pdf{background:var(--btn-bg);color:var(--btn-color);border:none;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;}
   .btn-pdf:hover{background:var(--btn-hover);}
   .btn-cancel{background:none;border:1.5px solid var(--border);padding:10px 20px;border-radius:8px;font-size:14px;color:var(--ink-soft);cursor:pointer;}
   .btn-cancel:hover{background:var(--bg);}
@@ -940,7 +940,6 @@ function gaugeSvg(pct, overCap){
   const offset = c * (1-clamped);
   const s = getComputedStyle(document.documentElement);
   const color = overCap ? s.getPropertyValue('--warn').trim() : s.getPropertyValue('--accent').trim();
-  const textFill = s.getPropertyValue('--ink').trim();
   return `
     <svg class="gauge-svg" viewBox="0 0 84 84">
       <circle cx="42" cy="42" r="${r}" fill="none" stroke="var(--gauge-track)" stroke-width="9"/>
@@ -948,7 +947,7 @@ function gaugeSvg(pct, overCap){
         stroke-dasharray="${c}" stroke-dashoffset="${offset}" stroke-linecap="round"
         transform="rotate(-90 42 42)"/>
       <text x="42" y="47" text-anchor="middle" font-family="IBM Plex Mono" font-weight="600"
-        font-size="15" fill="${textFill}">${Math.round(pct*100)}%</text>
+        font-size="15" fill="var(--ink)">${Math.round(pct*100)}%</text>
     </svg>
   `;
 }
