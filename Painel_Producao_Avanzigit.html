@@ -1068,6 +1068,8 @@ function renderMateriasPrimas(mrpSheet, allRows){
     const r = rows[i];
     if(!r || !r[0] || (r[0]||'').toString().trim() === '') break;
     const nome = r[0].toString().trim();
+    const MP_EXCLUIDAS = ['alcool polivinilico'];
+    if(MP_EXCLUIDAS.includes(nome.toLowerCase().trim())) continue;
     const precisaJS = precisaCalc[nome.toLowerCase()] || 0;
     const estoque = r[2] === null || r[2] === '' || r[2] === 'Verificar' ? null : Number(r[2]) || 0;
     const saldo = estoque === null ? null : estoque - precisaJS;
