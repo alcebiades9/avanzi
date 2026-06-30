@@ -1,14 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-HQHK314JS9"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-HQHK314JS9');
-    </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Avanzi Química — Painel de Produção</title>
@@ -34,6 +26,60 @@
     --warn-bg:#F6E2DF;
     --line:#E2DCCB;
     --radius:14px;
+    --purple:#7C3AED;
+    --purple-bg:#EDE9FE;
+    --btn-bg:#18262F;
+    --btn-hover:#0E1A21;
+    --btn-color:#fff;
+    --dot-ok:#2a9d5c;
+    --dot-andamento:#e07b00;
+    --dot-planejado:#ccc;
+    --gerencial-bg:#2a6049;
+    --month-badge-color:#5C3A0A;
+    --select-border:#ccc;
+    --select-bg:white;
+    --gauge-track:#E2DCCB;
+    --chart-grid:#E2DCCB;
+    --chart-tick:#56666F;
+    --accent-alpha:rgba(217,119,6,0.08);
+    --plan-total-bg:#18262F;
+    --plan-total-color:#fff;
+    --dropzone-drag-bg:#FBF3E8;
+    --svg-stroke:#56666F;
+  }
+  [data-theme="dark"]{
+    --bg:#1a1d21;
+    --surface:#242830;
+    --ink:#e0e0e0;
+    --ink-soft:#a0a8b0;
+    --ink-faint:#6b7580;
+    --accent:#f0924a;
+    --accent-soft:#5c3a1a;
+    --ok:#34d178;
+    --ok-bg:#1a3a24;
+    --warn:#ff6b5a;
+    --warn-bg:#3a1a1a;
+    --line:#333840;
+    --purple:#a78bfa;
+    --purple-bg:#2d2250;
+    --btn-bg:#3d4450;
+    --btn-hover:#4d5460;
+    --btn-color:#e0e0e0;
+    --dot-ok:#34d178;
+    --dot-andamento:#f0924a;
+    --dot-planejado:#555;
+    --gerencial-bg:#3d7a50;
+    --month-badge-color:#f0924a;
+    --select-border:#444;
+    --select-bg:#2a2e36;
+    --gauge-track:#333840;
+    --chart-grid:#333840;
+    --chart-tick:#a0a8b0;
+    --accent-alpha:rgba(240,146,74,0.12);
+    --plan-total-bg:#3d7a50;
+    --plan-total-color:#fff;
+    --dropzone-drag-bg:#2a2520;
+    --svg-stroke:#a0a8b0;
   }
   *{box-sizing:border-box;}
   body{
@@ -42,6 +88,7 @@
     color:var(--ink);
     font-family:'IBM Plex Sans', sans-serif;
     -webkit-font-smoothing:antialiased;
+    transition:background .3s,color .3s;
   }
   .wrap{max-width:1180px;margin:0 auto;padding:32px 28px 80px;}
   h1,h2,h3{font-family:'Space Grotesk', sans-serif;margin:0;}
@@ -63,10 +110,10 @@
 
   button{font-family:'IBM Plex Sans';cursor:pointer;}
   .btn{
-    background:var(--ink);color:#fff;border:none;border-radius:10px;
+    background:var(--btn-bg);color:var(--btn-color);border:none;border-radius:10px;
     padding:11px 20px;font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:8px;
   }
-  .btn:hover{background:#0E1A21;}
+  .btn:hover{background:var(--btn-hover);}
   .btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
   .btn-ghost:hover{border-color:var(--ink-soft);}
 
@@ -75,7 +122,7 @@
     border:2px dashed var(--line);border-radius:var(--radius);background:var(--surface);
     padding:64px 32px;text-align:center;cursor:pointer;transition:border-color .15s, background .15s;
   }
-  .dropzone.drag{border-color:var(--accent);background:#FBF3E8;}
+  .dropzone.drag{border-color:var(--accent);background:var(--dropzone-drag-bg);}
   .dropzone .icon{width:54px;height:54px;margin:0 auto 18px;}
   .dropzone h3{font-size:19px;margin-bottom:8px;}
   .dropzone p{color:var(--ink-soft);font-size:14px;max-width:420px;margin:0 auto;line-height:1.6;}
@@ -83,14 +130,14 @@
 
   /* kpi row */
   .kpi-row{display:grid;grid-template-columns:repeat(auto-fit, minmax(220px,1fr));gap:16px;margin-bottom:28px;}
-  .kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;}
+  .kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;transition:background .3s,border-color .3s;}
   .kpi .label{font-size:12px;text-transform:uppercase;letter-spacing:0.07em;color:var(--ink-faint);margin-bottom:10px;}
   .kpi .value{font-family:'IBM Plex Mono';font-weight:600;font-size:30px;line-height:1;}
   .kpi .value small{font-size:15px;font-weight:500;color:var(--ink-soft);margin-left:4px;}
   .kpi .sub{font-size:12.5px;color:var(--ink-soft);margin-top:8px;}
 
   /* sections */
-  .section{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:24px 26px;margin-bottom:24px;}
+  .section{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:24px 26px;margin-bottom:24px;transition:background .3s,border-color .3s;}
   .section-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:18px;flex-wrap:wrap;gap:8px;}
   .section-head h3{font-size:16px;font-weight:700;}
   .section-head .note{font-size:12.5px;color:var(--ink-faint);}
@@ -108,8 +155,8 @@
   .rank-bar-fill{height:100%;background:var(--accent);border-radius:4px;}
   .rank-val{font-family:'IBM Plex Mono';font-size:13.5px;font-weight:600;color:var(--ink-soft);white-space:nowrap;}
   .product-list{max-height:520px;overflow-y:auto;padding-right:6px;}
-  .month-badge{display:inline-flex;align-items:center;gap:8px;background:var(--accent-soft);color:#5C3A0A;font-size:13px;font-weight:500;padding:6px 8px 6px 14px;border-radius:20px;}
-  .month-badge button{background:rgba(0,0,0,0.12);border:none;color:#5C3A0A;width:20px;height:20px;border-radius:50%;font-size:13px;line-height:1;cursor:pointer;}
+  .month-badge{display:inline-flex;align-items:center;gap:8px;background:var(--accent-soft);color:var(--month-badge-color);font-size:13px;font-weight:500;padding:6px 8px 6px 14px;border-radius:20px;}
+  .month-badge button{background:rgba(0,0,0,0.12);border:none;color:var(--month-badge-color);width:20px;height:20px;border-radius:50%;font-size:13px;line-height:1;cursor:pointer;}
 
   /* filter panel */
   .filter-toggle{font-size:13px;padding:7px 14px;}
@@ -125,7 +172,7 @@
   /* reactor gauges */
   .gauge-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
   @media (max-width:600px){.gauge-grid{grid-template-columns:1fr;}}
-  .gauge-card{border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;align-items:flex-start;gap:14px;}
+  .gauge-card{border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;align-items:flex-start;gap:14px;transition:background .3s,border-color .3s;}
   .gauge-svg{flex:none;width:84px;height:84px;}
   .gauge-info{min-width:0;flex:1;}
   .gauge-info .gname{font-size:13.5px;font-weight:600;}
@@ -147,7 +194,7 @@
   .plan-table td{padding:9px 10px;border-bottom:1px solid var(--line);}
   .plan-table tbody tr:hover{background:var(--bg);}
   .plan-table .pct{color:var(--ink-faint);font-family:'IBM Plex Mono';font-size:12px;margin-left:6px;}
-  .plan-total td{background:var(--ink);color:#fff;font-weight:600;font-family:'IBM Plex Mono';border-bottom:none;}
+  .plan-total td{background:var(--plan-total-bg);color:var(--plan-total-color);font-weight:600;font-family:'IBM Plex Mono';border-bottom:none;}
   .plan-total td:first-child{border-radius:0 0 0 8px;}
   .plan-total td:last-child{border-radius:0 0 8px 0;}
 
@@ -159,16 +206,23 @@
   .modal-box p{font-size:13px;color:var(--ink-soft);margin-bottom:20px;}
   .modal-field{margin-bottom:16px;}
   .modal-field label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;}
-  .modal-field select{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;background:var(--bg);color:var(--ink);cursor:pointer;}
+  .modal-field select{width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;background:var(--bg);color:var(--ink);cursor:pointer;}
   .modal-field select:focus{outline:none;border-color:var(--accent);}
   .modal-actions{display:flex;gap:10px;margin-top:24px;}
   .modal-actions .btn{flex:1;justify-content:center;}
   .btn-pdf{background:var(--ink);color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;}
-  .btn-pdf:hover{background:#0d1a20;}
+  .btn-pdf:hover{background:var(--btn-hover);}
   .btn-cancel{background:none;border:1.5px solid var(--border);padding:10px 20px;border-radius:8px;font-size:14px;color:var(--ink-soft);cursor:pointer;}
   .btn-cancel:hover{background:var(--bg);}
 
   footer{margin-top:36px;text-align:center;font-size:12px;color:var(--ink-faint);}
+
+  .theme-toggle{
+    background:var(--surface);border:1px solid var(--line);border-radius:10px;
+    padding:8px 12px;font-size:18px;cursor:pointer;display:flex;align-items:center;
+    transition:background .2s,border-color .2s;
+  }
+  .theme-toggle:hover{border-color:var(--ink-soft);}
 
   /* tabs */
   .tabs{display:flex;gap:4px;margin-bottom:24px;border-bottom:2px solid var(--line);padding-bottom:0;}
@@ -186,7 +240,7 @@
   .mp-table td:first-child{text-align:left;font-family:'IBM Plex Sans';font-size:13.5px;}
   .mp-table tbody tr:hover{background:var(--bg);}
   .mp-table .status-comprar{color:var(--warn);font-weight:700;font-family:'IBM Plex Sans';}
-  .mp-table .status-produzir{color:#7C3AED;font-weight:700;font-family:'IBM Plex Sans';}
+  .mp-table .status-produzir{color:var(--purple);font-weight:700;font-family:'IBM Plex Sans';}
   .mp-table .status-ok{color:var(--ok);font-family:'IBM Plex Sans';}
   .mp-table .status-verificar{color:var(--ink-faint);font-style:italic;font-family:'IBM Plex Sans';}
   .mp-table .neg{color:var(--warn);}
@@ -194,7 +248,7 @@
   .mp-badge{padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;}
   .mp-badge.warn{background:var(--warn-bg);color:var(--warn);}
   .mp-badge.ok{background:var(--ok-bg);color:var(--ok);}
-  .mp-badge.purple{background:#EDE9FE;color:#7C3AED;}
+  .mp-badge.purple{background:var(--purple-bg);color:var(--purple);}
 
 
   /* ===== MOBILE RESPONSIVO ===== */
@@ -255,9 +309,12 @@
         <div class="sub" style="font-size:14px;">Planejamento e Controle de Produção</div>
       </div>
     </div>
-    <div class="meta">
-      <div class="label">Última atualização</div>
-      <div id="lastUpdate">—</div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div class="meta">
+        <div class="label">Última atualização</div>
+        <div id="lastUpdate">—</div>
+      </div>
+      <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Alternar modo claro/escuro">🌙</button>
     </div>
   </div>
 
@@ -269,7 +326,7 @@
     <div style="display:flex;gap:10px;align-items:center;">
 
       <button class="btn-pdf" id="relatorioBtn" style="display:none;" onclick="abrirModalRelatorio()">📄 Relatório Semanal</button>
-      <button class="btn-pdf" id="gerencialBtn" style="display:none;background:#2a6049;" onclick="abrirModalGerencial()">📊 Relatório Gerencial</button>
+      <button class="btn-pdf" id="gerencialBtn" style="display:none;background:var(--gerencial-bg);" onclick="abrirModalGerencial()">📊 Relatório Gerencial</button>
     </div>
   </div>
 
@@ -277,8 +334,8 @@
 
   <div class="dropzone" id="dropzone">
     <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 16V4m0 0-5 5m5-5 5 5" stroke="#56666F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="#56666F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M12 16V4m0 0-5 5m5-5 5 5" stroke="var(--svg-stroke)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="var(--svg-stroke)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
     <h3>Painel de produção Avanzi</h3>
     <p>Clique no botão abaixo para carregar os dados direto do Google Drive.</p>
@@ -323,7 +380,7 @@
         <div id="monthBadge" style="display:none;margin-bottom:14px;"></div>
         <div id="weekFilterRow" style="display:none;margin-bottom:14px;align-items:center;gap:10px;">
           <label style="font-size:13px;font-weight:500;color:var(--ink-soft);">Semana:</label>
-          <select id="weekSelect" style="font-size:13px;padding:4px 10px;border:1px solid #ccc;border-radius:6px;background:white;cursor:pointer;">
+          <select id="weekSelect" style="font-size:13px;padding:4px 10px;border:1px solid var(--select-border);border-radius:6px;background:var(--select-bg);color:var(--ink);cursor:pointer;">
             <option value="">Todas as semanas</option>
           </select>
         </div>
@@ -342,13 +399,13 @@
           <h3>Capacidade dos reatores</h3>
           <div style="display:flex;align-items:center;gap:16px;">
             <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);">
-              <span style="width:10px;height:10px;border-radius:50%;background:#2a9d5c;display:inline-block;flex-shrink:0;"></span> Finalizado
+              <span style="width:10px;height:10px;border-radius:50%;background:var(--dot-ok);display:inline-block;flex-shrink:0;"></span> Finalizado
             </div>
             <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);">
-              <span style="width:10px;height:10px;border-radius:50%;background:#e07b00;display:inline-block;flex-shrink:0;"></span> Em andamento
+              <span style="width:10px;height:10px;border-radius:50%;background:var(--dot-andamento);display:inline-block;flex-shrink:0;"></span> Em andamento
             </div>
             <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);">
-              <span style="width:10px;height:10px;border-radius:50%;background:#ccc;display:inline-block;flex-shrink:0;"></span> Planejado
+              <span style="width:10px;height:10px;border-radius:50%;background:var(--dot-planejado);display:inline-block;flex-shrink:0;"></span> Planejado
             </div>
             <span class="note">Esta semana</span>
           </div>
@@ -362,13 +419,13 @@
         <h3>Plano da semana</h3>
         <div style="display:flex;align-items:center;gap:16px;">
           <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);">
-            <span style="width:10px;height:10px;border-radius:50%;background:#2a9d5c;display:inline-block;flex-shrink:0;"></span> Finalizado
+            <span style="width:10px;height:10px;border-radius:50%;background:var(--dot-ok);display:inline-block;flex-shrink:0;"></span> Finalizado
           </div>
           <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);">
-            <span style="width:10px;height:10px;border-radius:50%;background:#e07b00;display:inline-block;flex-shrink:0;"></span> Em andamento
+            <span style="width:10px;height:10px;border-radius:50%;background:var(--dot-andamento);display:inline-block;flex-shrink:0;"></span> Em andamento
           </div>
           <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);">
-            <span style="width:10px;height:10px;border-radius:50%;background:#ccc;display:inline-block;flex-shrink:0;"></span> Planejado
+            <span style="width:10px;height:10px;border-radius:50%;background:var(--dot-planejado);display:inline-block;flex-shrink:0;"></span> Planejado
           </div>
           <span class="note">MRP &middot; atualize toda semana na planilha</span>
         </div>
@@ -428,7 +485,7 @@
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="fecharModalGerencial()">Cancelar</button>
-      <button class="btn-pdf" style="background:#2a6049;" onclick="gerarRelatorioGerencial()">⬇ Gerar PDF</button>
+      <button class="btn-pdf" style="background:var(--gerencial-bg);" onclick="gerarRelatorioGerencial()">⬇ Gerar PDF</button>
     </div>
   </div>
 </div>
@@ -461,6 +518,26 @@
 </div>
 
 <script>
+// ── DARK MODE ──
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const btn = document.getElementById('themeToggle');
+  if (btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+  localStorage.setItem('painel-avanzi-theme', theme);
+}
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'light';
+  const next = current === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+  if (trendChartInstance && window._lastChartLabels) {
+    renderTrend(window._lastChartLabels, window._lastChartValues);
+  }
+}
+(function() {
+  const saved = localStorage.getItem('painel-avanzi-theme');
+  if (saved) applyTheme(saved);
+})();
+
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('fileInput');
 const dashboard = document.getElementById('dashboard');
@@ -799,7 +876,11 @@ function renderTrend(labels, values){
   const ctx = document.getElementById('trendChart');
   if(trendChartInstance) trendChartInstance.destroy();
   ctx.style.cursor = 'pointer';
-  const pointColors = labels.map(l => l === selectedMonth ? '#D97706' : '#18262F');
+  window._lastChartLabels = labels;
+  window._lastChartValues = values;
+  const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  const inkColor = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim();
+  const pointColors = labels.map(l => l === selectedMonth ? accentColor : inkColor);
   const pointRadii = labels.map(l => l === selectedMonth ? 7 : 4);
   trendChartInstance = new Chart(ctx, {
     type:'line',
@@ -808,8 +889,8 @@ function renderTrend(labels, values){
       datasets:[{
         label:'kg produzidos',
         data: values,
-        borderColor:'#D97706',
-        backgroundColor:'rgba(217,119,6,0.08)',
+        borderColor:getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
+        backgroundColor:getComputedStyle(document.documentElement).getPropertyValue('--accent-alpha').trim(),
         borderWidth:2.5,
         pointBackgroundColor:pointColors,
         pointRadius:pointRadii,
@@ -829,8 +910,8 @@ function renderTrend(labels, values){
         applyFilterAndRender();
       },
       scales:{
-        x:{ grid:{display:false}, ticks:{autoSkip:false, maxRotation:45, color:'#56666F'} },
-        y:{ grid:{color:'#E2DCCB'}, ticks:{color:'#56666F', callback:v=>v.toLocaleString('pt-BR')} }
+        x:{ grid:{display:false}, ticks:{autoSkip:false, maxRotation:45, color:getComputedStyle(document.documentElement).getPropertyValue('--chart-tick').trim()} },
+        y:{ grid:{color:getComputedStyle(document.documentElement).getPropertyValue('--chart-grid').trim()}, ticks:{color:getComputedStyle(document.documentElement).getPropertyValue('--chart-tick').trim(), callback:v=>v.toLocaleString('pt-BR')} }
       }
     }
   });
@@ -857,15 +938,17 @@ function gaugeSvg(pct, overCap){
   const r = 34, c = 2*Math.PI*r;
   const clamped = Math.min(pct,1);
   const offset = c * (1-clamped);
-  const color = overCap ? '#B23A2E' : '#D97706';
+  const s = getComputedStyle(document.documentElement);
+  const color = overCap ? s.getPropertyValue('--warn').trim() : s.getPropertyValue('--accent').trim();
+  const textFill = s.getPropertyValue('--ink').trim();
   return `
     <svg class="gauge-svg" viewBox="0 0 84 84">
-      <circle cx="42" cy="42" r="${r}" fill="none" stroke="#E2DCCB" stroke-width="9"/>
+      <circle cx="42" cy="42" r="${r}" fill="none" stroke="var(--gauge-track)" stroke-width="9"/>
       <circle cx="42" cy="42" r="${r}" fill="none" stroke="${color}" stroke-width="9"
         stroke-dasharray="${c}" stroke-dashoffset="${offset}" stroke-linecap="round"
         transform="rotate(-90 42 42)"/>
       <text x="42" y="47" text-anchor="middle" font-family="IBM Plex Mono" font-weight="600"
-        font-size="15" fill="#18262F">${Math.round(pct*100)}%</text>
+        font-size="15" fill="${textFill}">${Math.round(pct*100)}%</text>
     </svg>
   `;
 }
@@ -905,9 +988,10 @@ function excelDateToStr(v){
 }
 
 function getColor(pct){
-  if(pct >= 0.66) return '#3F7D4F';
-  if(pct >= 0.33) return '#D97706';
-  return '#B23A2E';
+  const s = getComputedStyle(document.documentElement);
+  if(pct >= 0.66) return s.getPropertyValue('--ok').trim();
+  if(pct >= 0.33) return s.getPropertyValue('--accent').trim();
+  return s.getPropertyValue('--warn').trim();
 }
 
 function renderMediaMensalFiltered(){
@@ -1203,10 +1287,10 @@ function renderWeekPlan(mrpSheet, allRows){
     // usa nome+qty; fallback por nome só se produto é único no MRP
     const st = statusMap[key] || ((mrpCount[pLow]||0) <= 1 ? statusMapName[pLow] : undefined);
     const dot = st === 'active'
-      ? `<span style="width:9px;height:9px;border-radius:50%;background:#e07b00;display:inline-block;flex-shrink:0;margin-right:8px;"></span>`
+      ? `<span style="width:9px;height:9px;border-radius:50%;background:var(--dot-andamento);display:inline-block;flex-shrink:0;margin-right:8px;"></span>`
       : st === 'done'
-      ? `<span style="width:9px;height:9px;border-radius:50%;background:#2a9d5c;display:inline-block;flex-shrink:0;margin-right:8px;"></span>`
-      : `<span style="width:9px;height:9px;border-radius:50%;background:#ccc;display:inline-block;flex-shrink:0;margin-right:8px;"></span>`;
+      ? `<span style="width:9px;height:9px;border-radius:50%;background:var(--dot-ok);display:inline-block;flex-shrink:0;margin-right:8px;"></span>`
+      : `<span style="width:9px;height:9px;border-radius:50%;background:var(--dot-planejado);display:inline-block;flex-shrink:0;margin-right:8px;"></span>`;
     return `
     <tr>
       <td><div style="display:flex;align-items:center;">${dot}${i.produto}</div></td>
@@ -1474,10 +1558,10 @@ function renderReactors(crpSheet, allRows, mrpItems){
             const isActive = reactorSt === 'active';
             const isDone = reactorSt === 'done';
             const dot = isActive
-              ? `<span title="Em andamento" style="width:9px;height:9px;border-radius:50%;background:#e07b00;display:inline-block;flex-shrink:0;margin-right:5px;"></span>`
+              ? `<span title="Em andamento" style="width:9px;height:9px;border-radius:50%;background:var(--dot-andamento);display:inline-block;flex-shrink:0;margin-right:5px;"></span>`
               : isDone
-              ? `<span title="Finalizado" style="width:9px;height:9px;border-radius:50%;background:#2a9d5c;display:inline-block;flex-shrink:0;margin-right:5px;"></span>`
-              : `<span title="Planejado" style="width:9px;height:9px;border-radius:50%;background:#ccc;display:inline-block;flex-shrink:0;margin-right:5px;"></span>`;
+              ? `<span title="Finalizado" style="width:9px;height:9px;border-radius:50%;background:var(--dot-ok);display:inline-block;flex-shrink:0;margin-right:5px;"></span>`
+              : `<span title="Planejado" style="width:9px;height:9px;border-radius:50%;background:var(--dot-planejado);display:inline-block;flex-shrink:0;margin-right:5px;"></span>`;
             return `<div style="display:flex;align-items:center;">${dot}${p.produto} <span style="margin-left:auto;">${fmtKg(p.qty)} kg</span></div>`;
           }).join('')}</div>` : '<div class="reactor-products empty">Nada planejado</div>'}
         </div>
