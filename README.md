@@ -164,5 +164,5 @@ Planta baixa técnica da área de produção com:
 
 ## 👤 Desenvolvido por
 
-**Alcebíades Correia** — PCP / Assistente Administrativo de Produção  
+**Alcebíades Correia** — Assistente Administrativo de Produção  
 Avanzi Química
