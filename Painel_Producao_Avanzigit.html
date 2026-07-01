@@ -520,6 +520,9 @@
             <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);">
               <span style="width:10px;height:10px;border-radius:50%;background:var(--dot-planejado);display:inline-block;flex-shrink:0;"></span> Planejado
             </div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);">
+              <span style="width:10px;height:10px;border-radius:50%;background:var(--purple);display:inline-block;flex-shrink:0;"></span> Parado
+            </div>
             <span class="note">Esta semana</span>
           </div>
         </div>
@@ -1647,6 +1650,7 @@ function renderReactors(crpSheet, allRows, mrpItems){
 
   const activeProductsR = {};  // key → 'active'
   const doneProductsR = {};    // key → 'done'
+  const paradoProductsR = {};  // key → 'parado'
   if(allRows){
     allRows.forEach(r => {
       const st = (r['Status']||'').toString().trim().toUpperCase();
@@ -1654,14 +1658,17 @@ function renderReactors(crpSheet, allRows, mrpItems){
       const qty = Math.round(Number(r['Quantidade_Produzida_kg'])||0);
       if(!p) return;
       const key = makeKeyR(p, qty);
-      if(st === 'EM ANDAMENTO' || st === 'PARADO!'){
+      if(st === 'PARADO!'){
+        paradoProductsR[key] = true;
+        paradoProductsR[p] = true;
+      } else if(st === 'EM ANDAMENTO'){
         activeProductsR[key] = true;
-        activeProductsR[p] = true; // fallback por nome
+        activeProductsR[p] = true;
       } else if(st === 'FINALIZADO'){
         const data = r['DATA'] ? new Date(r['DATA']) : null;
         if(data && data >= inicioSemana2){
-          if(!activeProductsR[key]) doneProductsR[key] = true;
-          if(!activeProductsR[p]) doneProductsR[p] = true;
+          if(!activeProductsR[key] && !paradoProductsR[key]) doneProductsR[key] = true;
+          if(!activeProductsR[p] && !paradoProductsR[p]) doneProductsR[p] = true;
         }
       }
     });
@@ -1673,12 +1680,12 @@ function renderReactors(crpSheet, allRows, mrpItems){
     const key = makeKeyR(p, qty);
     const isDup = (mrpCountR[p]||0) > 1;
     if(isDup){
-      // produto duplicado: usa nome+qty
+      if(paradoProductsR[key]) return 'parado';
       if(activeProductsR[key]) return 'active';
       if(doneProductsR[key]) return 'done';
       return 'none';
     } else {
-      // produto único: usa só nome
+      if(paradoProductsR[p]) return 'parado';
       if(activeProductsR[p]) return 'active';
       if(doneProductsR[p]) return 'done';
       return 'none';
@@ -1704,7 +1711,10 @@ function renderReactors(crpSheet, allRows, mrpItems){
             const reactorSt = getReactorStatus(p.produto, p.qty);
             const isActive = reactorSt === 'active';
             const isDone = reactorSt === 'done';
-            const dot = isActive
+            const isParado = reactorSt === 'parado';
+            const dot = isParado
+              ? `<span title="Parado" style="width:9px;height:9px;border-radius:50%;background:var(--purple);display:inline-block;flex-shrink:0;margin-right:5px;"></span>`
+              : isActive
               ? `<span title="Em andamento" style="width:9px;height:9px;border-radius:50%;background:var(--dot-andamento);display:inline-block;flex-shrink:0;margin-right:5px;"></span>`
               : isDone
               ? `<span title="Finalizado" style="width:9px;height:9px;border-radius:50%;background:var(--dot-ok);display:inline-block;flex-shrink:0;margin-right:5px;"></span>`
