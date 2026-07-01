@@ -226,6 +226,28 @@
 
   footer{margin-top:36px;text-align:center;font-size:12px;color:var(--ink-faint);}
 
+  /* OEE */
+  .oee-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;}
+  .oee-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:background .3s,border-color .3s;}
+  .oee-card h4{margin:0;font-size:14px;font-weight:600;text-align:center;}
+  .oee-card .oee-value{font-family:'IBM Plex Mono';font-size:28px;font-weight:700;}
+  .oee-breakdown{display:flex;gap:16px;width:100%;justify-content:center;margin-top:8px;}
+  .oee-metric{text-align:center;}
+  .oee-metric .oee-metric-label{font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-faint);}
+  .oee-metric .oee-metric-value{font-family:'IBM Plex Mono';font-size:16px;font-weight:600;}
+  .oee-bar{width:100%;height:6px;background:var(--line);border-radius:3px;margin-top:4px;overflow:hidden;}
+  .oee-bar-fill{height:100%;border-radius:3px;transition:width .5s ease;}
+  .oee-general{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:24px;display:flex;align-items:center;gap:24px;transition:background .3s,border-color .3s;}
+  .oee-general-info{flex:1;}
+  .oee-general-info h4{margin:0 0 4px;font-size:16px;}
+  .oee-general-info .oee-value{font-family:'IBM Plex Mono';font-size:36px;font-weight:700;}
+  .oee-general-breakdown{display:flex;gap:20px;}
+  .oee-level{font-size:11px;color:var(--ink-soft);margin-top:4px;}
+  @media(max-width:600px){
+    .oee-general{flex-direction:column;align-items:flex-start;}
+    .oee-general-breakdown{flex-direction:column;gap:8px;}
+  }
+
   .theme-toggle{
     background:var(--surface);border:1px solid var(--line);border-radius:10px;
     padding:8px 12px;font-size:18px;cursor:pointer;display:flex;align-items:center;
@@ -442,6 +464,7 @@
       <button class="tab-btn active" data-tab="producao">Produção</button>
       <button class="tab-btn" data-tab="materiaprima">Matéria-prima</button>
       <button class="tab-btn" data-tab="media">Média mensal</button>
+      <button class="tab-btn" data-tab="oee">OEE</button>
     </div>
 
     <div class="tab-panel active" id="tab-producao">
@@ -554,6 +577,23 @@
       </div>
     </div><!-- /tab-panel media -->
 
+    <div class="tab-panel" id="tab-oee">
+      <div class="section">
+        <div class="section-head">
+          <h3>OEE — Eficiência Global dos Reatores</h3>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <select id="oeeMonthFilter" style="padding:6px 12px;border:1px solid var(--select-border);border-radius:6px;background:var(--select-bg);color:var(--ink);font-size:13px;cursor:pointer;">
+              <option value="all">Todos os meses</option>
+            </select>
+          </div>
+        </div>
+        <p style="color:var(--ink-soft);font-size:13px;margin:4px 0 20px;">Disponibilidade × Qualidade = OEE. Só lotes com coluna REATOR preenchida.</p>
+        <div id="oeeContent" style="display:flex;flex-direction:column;gap:24px;">
+          <p style="color:var(--ink-faint);font-size:14px;">Nenhum dado com REATOR preenchido encontrado.</p>
+        </div>
+      </div>
+    </div><!-- /tab-panel oee -->
+
   </div>
 
   <!-- MODAL RELATÓRIO GERENCIAL -->
@@ -648,6 +688,7 @@ const dashboard = document.getElementById('dashboard');
 const errorBox = document.getElementById('errorBox');
 let trendChartInstance = null;
 let allFinishedRows = [];
+let allProductionRows = [];
 let excludedProducts = new Set();
 let selectedMonth = null;
 let selectedWeek = null;
@@ -688,6 +729,7 @@ async function loadFromDrive(){
     
     dashboard.style.display = 'block';
     document.getElementById('lastUpdate').textContent = new Date().toLocaleString('pt-BR');
+    renderOEE();
   }catch(err){
     console.error(err);
     showError('Não consegui carregar do Google Drive. Verifique se o arquivo está compartilhado como "Qualquer pessoa com o link pode ver". Erro: ' + err.message);
@@ -748,6 +790,10 @@ function processWorkbook(wb){
   renderKpis(totalKg, numLotesReator, numLotesCTN, avgLoteReator, topList[0]);
 
   allFinishedRows = finished;
+  allProductionRows = rows.filter(r => {
+    const st = (r['Status']||'').toString().trim().toUpperCase();
+    return st === 'FINALIZADO' || st === 'PARADO!' || st === 'EM ANDAMENTO';
+  });
   // Preserva filtros existentes no auto-refresh
   const prevExcluded = new Set(excludedProducts);
   const prevMonth = selectedMonth;
@@ -2200,6 +2246,181 @@ function gerarRelatorioGerencial(){
   doc.save(`relatorio_gerencial_${mes}.pdf`);
   fecharModalGerencial();
 }
+
+// ── OEE ──
+const REACTOR_NAMES = {1:'Reator 1', 2:'Reator 2', 3:'Reator 3', 4:'Reator 4'};
+
+function parseMinutesOEE(timeStr){
+  if(!timeStr) return 0;
+  const s = timeStr.toString();
+  const hMatch = s.match(/(\d+)h/);
+  const mMatch = s.match(/(\d+)min/);
+  return (hMatch ? parseInt(hMatch[1])*60 : 0) + (mMatch ? parseInt(mMatch[1]) : 0);
+}
+
+function getOeeColor(pct){
+  const s = getComputedStyle(document.documentElement);
+  if(pct >= 85) return s.getPropertyValue('--ok').trim();
+  if(pct >= 60) return s.getPropertyValue('--accent').trim();
+  return s.getPropertyValue('--warn').trim();
+}
+
+function getOeeLevel(pct){
+  if(pct >= 85) return 'Excelente';
+  if(pct >= 60) return 'Bom';
+  return 'Precisa melhorar';
+}
+
+function oeeGaugeSvg(pct, color, size){
+  const r = 34, c = 2*Math.PI*r;
+  const clamped = Math.min(pct,1);
+  const offset = c * (1-clamped);
+  return `<svg viewBox="0 0 84 84" width="${size}" height="${size}">
+    <circle cx="42" cy="42" r="${r}" fill="none" stroke="var(--gauge-track)" stroke-width="9"/>
+    <circle cx="42" cy="42" r="${r}" fill="none" stroke="${color}" stroke-width="9"
+      stroke-dasharray="${c}" stroke-dashoffset="${offset}" stroke-linecap="round"
+      transform="rotate(-90 42 42)"/>
+    <text x="42" y="47" text-anchor="middle" font-family="IBM Plex Mono" font-weight="600"
+      font-size="15" fill="var(--ink)">${Math.round(pct*100)}%</text>
+  </svg>`;
+}
+
+function oeeMetricHtml(label, value){
+  const color = getOeeColor(value);
+  return `<div class="oee-metric">
+    <div class="oee-metric-label">${label}</div>
+    <div class="oee-metric-value" style="color:${color};">${value}%</div>
+    <div class="oee-bar"><div class="oee-bar-fill" style="width:${value}%;background:${color};"></div></div>
+  </div>`;
+}
+
+function renderOEE(){
+  const container = document.getElementById('oeeContent');
+  const monthSelect = document.getElementById('oeeMonthFilter');
+  if(!container) return;
+
+  const withReactor = allProductionRows.filter(r => {
+    const rNum = Number(r['REATOR']);
+    return rNum >= 1 && rNum <= 4;
+  });
+
+  if(!withReactor.length){
+    container.innerHTML = '<p style="color:var(--ink-faint);font-size:14px;">Nenhum lote com coluna REATOR preenchida. Preencha a coluna REATOR nos lotes para ver o OEE.</p>';
+    return;
+  }
+
+  const months = new Set();
+  withReactor.forEach(r => {
+    const d = r['DATA'];
+    if(d){
+      const dt = new Date(d);
+      if(!isNaN(dt)) months.add(dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0'));
+    }
+  });
+  const sortedMonths = [...months].sort();
+
+  const prevVal = monthSelect.value;
+  monthSelect.innerHTML = '<option value="all">Todos os meses</option>';
+  sortedMonths.forEach(m => {
+    const [y, mo] = m.split('-');
+    const label = MONTH_NAMES[parseInt(mo)-1] + ' ' + y;
+    monthSelect.innerHTML += `<option value="${m}">${label}</option>`;
+  });
+  if(prevVal && monthSelect.querySelector(`option[value="${prevVal}"]`)) monthSelect.value = prevVal;
+
+  const selMonth = monthSelect.value;
+  let filtered = withReactor;
+  if(selMonth !== 'all'){
+    filtered = withReactor.filter(r => {
+      const d = r['DATA'];
+      if(!d) return false;
+      const dt = new Date(d);
+      return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0') === selMonth;
+    });
+  }
+
+  const reactors = {};
+  filtered.forEach(r => {
+    const rNum = Number(r['REATOR']);
+    if(!reactors[rNum]) reactors[rNum] = { finalizado:[], parado:[] };
+    const st = (r['Status']||'').toString().trim().toUpperCase();
+    const mins = parseMinutesOEE(r['Tempo_Total']);
+    const qual = (r['QUALIDADE']||'').toString().trim().toLowerCase();
+
+    if(st === 'FINALIZADO'){
+      reactors[rNum].finalizado.push({ mins, conforme: qual === 'conforme' });
+    }
+    if(st === 'PARADO!'){
+      reactors[rNum].parado.push({ mins });
+    }
+  });
+
+  const results = [];
+  for(const [rNum, data] of Object.entries(reactors)){
+    const prodMins = data.finalizado.reduce((s,r)=>s+r.mins,0);
+    const paradoMins = data.parado.reduce((s,r)=>s+r.mins,0);
+    const totalMins = prodMins + paradoMins;
+
+    const disponibilidade = totalMins > 0 ? (prodMins / totalMins) * 100 : 100;
+    const totalFin = data.finalizado.length;
+    const conformes = data.finalizado.filter(r=>r.conforme).length;
+    const qualidade = totalFin > 0 ? (conformes / totalFin) * 100 : 100;
+    const oee = (disponibilidade * qualidade) / 100;
+
+    results.push({
+      reactor: parseInt(rNum), name: REACTOR_NAMES[rNum] || 'Reator '+rNum,
+      disponibilidade: Math.round(disponibilidade), qualidade: Math.round(qualidade),
+      oee: Math.round(oee), lotes: totalFin, paradoMins, prodMins
+    });
+  }
+  results.sort((a,b) => a.reactor - b.reactor);
+
+  const n = results.length || 1;
+  const geralDisp = Math.round(results.reduce((s,r)=>s+r.disponibilidade,0)/n);
+  const geralQual = Math.round(results.reduce((s,r)=>s+r.qualidade,0)/n);
+  const geralOee = Math.round((geralDisp * geralQual) / 100);
+  const geralColor = getOeeColor(geralOee);
+
+  let html = `<div class="oee-general">
+    <div style="flex-shrink:0;">${oeeGaugeSvg(geralOee/100, geralColor, 100)}</div>
+    <div class="oee-general-info">
+      <h4>OEE Geral da Fábrica</h4>
+      <div class="oee-value" style="color:${geralColor};">${geralOee}%</div>
+      <div class="oee-level">${getOeeLevel(geralOee)} — Média de ${n} reator${n>1?'es':''}</div>
+    </div>
+    <div class="oee-general-breakdown">
+      ${oeeMetricHtml('Disponibilidade', geralDisp)}
+      ${oeeMetricHtml('Qualidade', geralQual)}
+    </div>
+  </div>`;
+
+  html += '<div class="oee-grid">';
+  results.forEach(r => {
+    const color = getOeeColor(r.oee);
+    html += `<div class="oee-card">
+      ${oeeGaugeSvg(r.oee/100, color, 84)}
+      <h4>${r.name}</h4>
+      <div class="oee-value" style="color:${color};">${r.oee}%</div>
+      <div style="font-size:12px;color:var(--ink-faint);">${r.lotes} lote${r.lotes!==1?'s':''} finalizado${r.lotes!==1?'s':''}</div>
+      <div class="oee-breakdown">
+        ${oeeMetricHtml('Dispon.', r.disponibilidade)}
+        ${oeeMetricHtml('Qualid.', r.qualidade)}
+      </div>
+      ${r.paradoMins > 0 ? `<div style="font-size:11px;color:var(--warn);margin-top:4px;">⚠ ${Math.round(r.paradoMins/60*10)/10}h parado</div>` : ''}
+    </div>`;
+  });
+  html += '</div>';
+
+  html += `<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink-soft);margin-top:8px;">
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--ok);margin-right:4px;"></span>≥ 85% Excelente</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--accent);margin-right:4px;"></span>60-84% Bom</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--warn);margin-right:4px;"></span>&lt; 60% Precisa melhorar</span>
+  </div>`;
+
+  container.innerHTML = html;
+}
+
+document.getElementById('oeeMonthFilter')?.addEventListener('change', () => renderOEE());
 
 </script>
 </body>
