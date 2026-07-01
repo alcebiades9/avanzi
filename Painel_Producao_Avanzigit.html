@@ -543,6 +543,9 @@
           <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);">
             <span style="width:10px;height:10px;border-radius:50%;background:var(--dot-planejado);display:inline-block;flex-shrink:0;"></span> Planejado
           </div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);">
+            <span style="width:10px;height:10px;border-radius:50%;background:var(--purple);display:inline-block;flex-shrink:0;"></span> Parado
+          </div>
           <span class="note">MRP &middot; atualize toda semana na planilha</span>
         </div>
       </div>
@@ -1085,12 +1088,12 @@ function renderProductList(sortedList){
   `).join('');
 }
 
-function gaugeSvg(pct, overCap){
+function gaugeSvg(pct, overCap, hasParado){
   const r = 34, c = 2*Math.PI*r;
   const clamped = Math.min(pct,1);
   const offset = c * (1-clamped);
   const s = getComputedStyle(document.documentElement);
-  const color = overCap ? s.getPropertyValue('--warn').trim() : s.getPropertyValue('--accent').trim();
+  const color = hasParado ? s.getPropertyValue('--purple').trim() : overCap ? s.getPropertyValue('--warn').trim() : s.getPropertyValue('--accent').trim();
   return `
     <svg class="gauge-svg" viewBox="0 0 84 84">
       <circle cx="42" cy="42" r="${r}" fill="none" stroke="var(--gauge-track)" stroke-width="9"/>
@@ -1414,7 +1417,12 @@ function renderWeekPlan(mrpSheet, allRows){
       const qty = Math.round(Number(r['Quantidade_Produzida_kg'])||0);
       if(!p) return;
       const key = p + '|' + qty;
-      if(st === 'EM ANDAMENTO' || st === 'PARADO!'){
+      if(st === 'PARADO!'){
+        statusMap[key] = 'parado';
+        if((mrpCount[p]||0) <= 1) statusMapName[p] = 'parado';
+        return;
+      }
+      if(st === 'EM ANDAMENTO'){
         statusMap[key] = 'active';
         if((mrpCount[p]||0) <= 1) statusMapName[p] = 'active';
         return;
@@ -1436,7 +1444,9 @@ function renderWeekPlan(mrpSheet, allRows){
     const pLow = i.produto.toLowerCase().trim();
     // usa nome+qty; fallback por nome só se produto é único no MRP
     const st = statusMap[key] || ((mrpCount[pLow]||0) <= 1 ? statusMapName[pLow] : undefined);
-    const dot = st === 'active'
+    const dot = st === 'parado'
+      ? `<span style="width:9px;height:9px;border-radius:50%;background:var(--purple);display:inline-block;flex-shrink:0;margin-right:8px;"></span>`
+      : st === 'active'
       ? `<span style="width:9px;height:9px;border-radius:50%;background:var(--dot-andamento);display:inline-block;flex-shrink:0;margin-right:8px;"></span>`
       : st === 'done'
       ? `<span style="width:9px;height:9px;border-radius:50%;background:var(--dot-ok);display:inline-block;flex-shrink:0;margin-right:8px;"></span>`
@@ -1700,9 +1710,10 @@ function renderReactors(crpSheet, allRows, mrpItems){
     const horasExibir = (r.horasRestantes !== undefined) ? r.horasRestantes : r.horas;
     const pct = r.capacidade ? horasExibir/r.capacidade : 0;
     const over = pct > 1;
+    const hasParado = r.products.some(p => getReactorStatus(p.produto, p.qty) === 'parado');
     return `
       <div class="gauge-card">
-        ${gaugeSvg(pct, over)}
+        ${gaugeSvg(pct, over, hasParado)}
         <div class="gauge-info">
           <div class="gname">${r.name}</div>
           <div class="gpct">${horasExibir.toFixed(1)}h <span style="font-size:12px;color:var(--ink-faint);font-family:'IBM Plex Sans';">/ ${r.capacidade.toFixed(0)}h</span></div>
