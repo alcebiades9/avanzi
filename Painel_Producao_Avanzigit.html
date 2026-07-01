@@ -665,6 +665,7 @@ function toggleTheme() {
   if (trendChartInstance && window._lastChartLabels) {
     renderTrend(window._lastChartLabels, window._lastChartValues);
   }
+  if (allProductionRows.length) renderOEE();
 }
 (function() {
   const saved = localStorage.getItem('painel-avanzi-theme');
