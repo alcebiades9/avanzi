@@ -1661,6 +1661,7 @@ function renderReactors(crpSheet, allRows, mrpItems){
   const activeProductsR = {};  // key → 'active'
   const doneProductsR = {};    // key → 'done'
   const paradoProductsR = {};  // key → 'parado'
+  const paradoObsR = {};       // key → texto da OBS
   if(allRows){
     allRows.forEach(r => {
       const st = (r['Status']||'').toString().trim().toUpperCase();
@@ -1668,9 +1669,11 @@ function renderReactors(crpSheet, allRows, mrpItems){
       const qty = Math.round(Number(r['Quantidade_Produzida_kg'])||0);
       if(!p) return;
       const key = makeKeyR(p, qty);
+      const obs = (r['OBS']||'').toString().trim();
       if(st === 'PARADO!'){
         paradoProductsR[key] = true;
         paradoProductsR[p] = true;
+        if(obs){ paradoObsR[key] = obs; paradoObsR[p] = obs; }
       } else if(st === 'EM ANDAMENTO'){
         activeProductsR[key] = true;
         activeProductsR[p] = true;
@@ -1702,6 +1705,12 @@ function renderReactors(crpSheet, allRows, mrpItems){
     }
   }
 
+  function getParadoObs(produto, qty){
+    const p = produto.toLowerCase().trim();
+    const key = makeKeyR(p, qty);
+    return paradoObsR[key] || paradoObsR[p] || '';
+  }
+
   const reactorMaps = parseReactorProducts(rows);
   const productBuckets = buildReactorBuckets(reactorMaps, mrpItems || []);
   reactors.forEach((r, idx) => { r.products = productBuckets[idx] || []; });
@@ -1723,14 +1732,16 @@ function renderReactors(crpSheet, allRows, mrpItems){
             const isActive = reactorSt === 'active';
             const isDone = reactorSt === 'done';
             const isParado = reactorSt === 'parado';
+            const obsText = isParado ? getParadoObs(p.produto, p.qty) : '';
             const dot = isParado
-              ? `<span title="Parado" style="width:9px;height:9px;border-radius:50%;background:var(--purple);display:inline-block;flex-shrink:0;margin-right:5px;"></span>`
+              ? `<span title="Parado${obsText ? ': ' + obsText : ''}" style="width:9px;height:9px;border-radius:50%;background:var(--purple);display:inline-block;flex-shrink:0;margin-right:5px;cursor:help;"></span>`
               : isActive
               ? `<span title="Em andamento" style="width:9px;height:9px;border-radius:50%;background:var(--dot-andamento);display:inline-block;flex-shrink:0;margin-right:5px;"></span>`
               : isDone
               ? `<span title="Finalizado" style="width:9px;height:9px;border-radius:50%;background:var(--dot-ok);display:inline-block;flex-shrink:0;margin-right:5px;"></span>`
               : `<span title="Planejado" style="width:9px;height:9px;border-radius:50%;background:var(--dot-planejado);display:inline-block;flex-shrink:0;margin-right:5px;"></span>`;
-            return `<div style="display:flex;align-items:center;">${dot}${p.produto} <span style="margin-left:auto;">${fmtKg(p.qty)} kg</span></div>`;
+            const obsLabel = isParado && obsText ? `<div style="font-size:10px;color:var(--purple);margin-top:2px;">⚠ ${obsText}</div>` : '';
+            return `<div style="display:flex;align-items:center;">${dot}${p.produto} <span style="margin-left:auto;">${fmtKg(p.qty)} kg</span></div>${obsLabel}`;
           }).join('')}</div>` : '<div class="reactor-products empty">Nada planejado</div>'}
         </div>
       </div>
