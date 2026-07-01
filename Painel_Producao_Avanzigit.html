@@ -745,7 +745,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
     const shared = document.getElementById('sharedSections');
-    if(shared) shared.style.display = btn.dataset.tab === 'media' ? 'none' : 'block';
+    if(shared) shared.style.display = (btn.dataset.tab === 'media' || btn.dataset.tab === 'oee') ? 'none' : 'block';
   });
 });
 
