@@ -230,7 +230,7 @@
   .oee-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;}
   .oee-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:background .3s,border-color .3s;}
   .oee-card h4{margin:0;font-size:14px;font-weight:600;text-align:center;}
-  .oee-card .oee-value{font-family:'IBM Plex Mono';font-size:28px;font-weight:700;}
+  .oee-card .oee-value{font-family:'IBM Plex Mono';font-size:28px;font-weight:700;color:var(--ink);}
   .oee-breakdown{display:flex;gap:16px;width:100%;justify-content:center;margin-top:8px;}
   .oee-metric{text-align:center;}
   .oee-metric .oee-metric-label{font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-faint);}
@@ -240,7 +240,7 @@
   .oee-general{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:24px;display:flex;align-items:center;gap:24px;transition:background .3s,border-color .3s;}
   .oee-general-info{flex:1;}
   .oee-general-info h4{margin:0 0 4px;font-size:16px;}
-  .oee-general-info .oee-value{font-family:'IBM Plex Mono';font-size:36px;font-weight:700;}
+  .oee-general-info .oee-value{font-family:'IBM Plex Mono';font-size:36px;font-weight:700;color:var(--ink);}
   .oee-general-breakdown{display:flex;gap:20px;}
   .oee-level{font-size:11px;color:var(--ink-soft);margin-top:4px;}
   @media(max-width:600px){
@@ -2386,7 +2386,7 @@ function renderOEE(){
     <div style="flex-shrink:0;">${oeeGaugeSvg(geralOee/100, geralColor, 100)}</div>
     <div class="oee-general-info">
       <h4>OEE Geral da Fábrica</h4>
-      <div class="oee-value" style="color:${geralColor};">${geralOee}%</div>
+      <div class="oee-value">${geralOee}%</div>
       <div class="oee-level">${getOeeLevel(geralOee)} — Média de ${n} reator${n>1?'es':''}</div>
     </div>
     <div class="oee-general-breakdown">
@@ -2401,7 +2401,7 @@ function renderOEE(){
     html += `<div class="oee-card">
       ${oeeGaugeSvg(r.oee/100, color, 84)}
       <h4>${r.name}</h4>
-      <div class="oee-value" style="color:${color};">${r.oee}%</div>
+      <div class="oee-value">${r.oee}%</div>
       <div style="font-size:12px;color:var(--ink-faint);">${r.lotes} lote${r.lotes!==1?'s':''} finalizado${r.lotes!==1?'s':''}</div>
       <div class="oee-breakdown">
         ${oeeMetricHtml('Dispon.', r.disponibilidade)}
