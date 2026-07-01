@@ -2343,23 +2343,27 @@ function renderOEE(){
   const reactors = {};
   filtered.forEach(r => {
     const rNum = Number(r['REATOR']);
-    if(!reactors[rNum]) reactors[rNum] = { finalizado:[], parado:[] };
+    if(!reactors[rNum]) reactors[rNum] = { finalizado:[], paradoTotal:0, prodTotal:0 };
     const st = (r['Status']||'').toString().trim().toUpperCase();
     const mins = parseMinutesOEE(r['Tempo_Total']);
+    const paradoMins = parseMinutesOEE(r['TEMPO_PARADO']);
     const qual = (r['QUALIDADE']||'').toString().trim().toLowerCase();
 
     if(st === 'FINALIZADO'){
       reactors[rNum].finalizado.push({ mins, conforme: qual === 'conforme' });
+      reactors[rNum].prodTotal += mins;
+      reactors[rNum].paradoTotal += paradoMins;
     }
     if(st === 'PARADO!'){
-      reactors[rNum].parado.push({ mins });
+      reactors[rNum].prodTotal += mins;
+      reactors[rNum].paradoTotal += paradoMins;
     }
   });
 
   const results = [];
   for(const [rNum, data] of Object.entries(reactors)){
-    const prodMins = data.finalizado.reduce((s,r)=>s+r.mins,0);
-    const paradoMins = data.parado.reduce((s,r)=>s+r.mins,0);
+    const prodMins = data.prodTotal;
+    const paradoMins = data.paradoTotal;
     const totalMins = prodMins + paradoMins;
 
     const disponibilidade = totalMins > 0 ? (prodMins / totalMins) * 100 : 100;
