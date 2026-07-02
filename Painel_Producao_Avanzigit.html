@@ -518,6 +518,9 @@
               <span style="width:10px;height:10px;border-radius:50%;background:var(--dot-andamento);display:inline-block;flex-shrink:0;"></span> Em andamento
             </div>
             <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);">
+              <span style="width:10px;height:10px;border-radius:50%;background:var(--purple);display:inline-block;flex-shrink:0;"></span> Parado
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);">
               <span style="width:10px;height:10px;border-radius:50%;background:var(--dot-planejado);display:inline-block;flex-shrink:0;"></span> Planejado
             </div>
             <span class="note">Esta semana</span>
@@ -536,6 +539,9 @@
           </div>
           <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);">
             <span style="width:10px;height:10px;border-radius:50%;background:var(--dot-andamento);display:inline-block;flex-shrink:0;"></span> Em andamento
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);">
+            <span style="width:10px;height:10px;border-radius:50%;background:var(--purple);display:inline-block;flex-shrink:0;"></span> Parado
           </div>
           <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);">
             <span style="width:10px;height:10px;border-radius:50%;background:var(--dot-planejado);display:inline-block;flex-shrink:0;"></span> Planejado
@@ -1408,6 +1414,8 @@ function renderWeekPlan(mrpSheet, allRows){
   // Mapa por nome+qty (preciso) e por nome (só para produtos únicos no MRP)
   const statusMap = {};     // chave: nome|qty
   const statusMapName = {}; // chave: só nome (apenas produtos únicos)
+  const obsMap = {};        // chave: nome|qty → texto da coluna OBS
+  const obsMapName = {};    // chave: só nome
   if(allRows){
     allRows.forEach(r => {
       const st = (r['Status']||'').toString().trim().toUpperCase();
@@ -1415,16 +1423,23 @@ function renderWeekPlan(mrpSheet, allRows){
       const qty = Math.round(Number(r['Quantidade_Produzida_kg'])||0);
       if(!p) return;
       const key = p + '|' + qty;
-      if(st === 'EM ANDAMENTO' || st === 'PARADO!'){
-        statusMap[key] = 'active';
-        if((mrpCount[p]||0) <= 1) statusMapName[p] = 'active';
+      if(st === 'PARADO!'){
+        statusMap[key] = 'stopped';
+        if((mrpCount[p]||0) <= 1) statusMapName[p] = 'stopped';
+        const obsTxt = (r['OBS']||'').toString().trim();
+        if(obsTxt){ obsMap[key] = obsTxt; obsMapName[p] = obsTxt; }
+        return;
+      }
+      if(st === 'EM ANDAMENTO'){
+        if(statusMap[key] !== 'stopped') statusMap[key] = 'active';
+        if((mrpCount[p]||0) <= 1 && statusMapName[p] !== 'stopped') statusMapName[p] = 'active';
         return;
       }
       if(st === 'FINALIZADO'){
         const data = r['DATA'] ? new Date(r['DATA']) : null;
         if(data && data >= inicioSemana){
-          if(statusMap[key] !== 'active') statusMap[key] = 'done';
-          if((mrpCount[p]||0) <= 1 && statusMapName[p] !== 'active') statusMapName[p] = 'done';
+          if(statusMap[key] !== 'active' && statusMap[key] !== 'stopped') statusMap[key] = 'done';
+          if((mrpCount[p]||0) <= 1 && statusMapName[p] !== 'active' && statusMapName[p] !== 'stopped') statusMapName[p] = 'done';
         }
       }
     });
@@ -1437,14 +1452,18 @@ function renderWeekPlan(mrpSheet, allRows){
     const pLow = i.produto.toLowerCase().trim();
     // usa nome+qty; fallback por nome só se produto é único no MRP
     const st = statusMap[key] || ((mrpCount[pLow]||0) <= 1 ? statusMapName[pLow] : undefined);
-    const dot = st === 'active'
+    const obsTxt = obsMap[key] || ((mrpCount[pLow]||0) <= 1 ? obsMapName[pLow] : undefined);
+    const dot = st === 'stopped'
+      ? `<span title="Parado${obsTxt ? ': '+obsTxt : ''}" style="width:9px;height:9px;border-radius:50%;background:var(--purple);display:inline-block;flex-shrink:0;margin-right:8px;"></span>`
+      : st === 'active'
       ? `<span style="width:9px;height:9px;border-radius:50%;background:var(--dot-andamento);display:inline-block;flex-shrink:0;margin-right:8px;"></span>`
       : st === 'done'
       ? `<span style="width:9px;height:9px;border-radius:50%;background:var(--dot-ok);display:inline-block;flex-shrink:0;margin-right:8px;"></span>`
       : `<span style="width:9px;height:9px;border-radius:50%;background:var(--dot-planejado);display:inline-block;flex-shrink:0;margin-right:8px;"></span>`;
+    const obsLine = (st === 'stopped' && obsTxt) ? `<div style="font-size:11px;color:var(--purple);margin-left:17px;">⏸ ${obsTxt}</div>` : '';
     return `
     <tr>
-      <td><div style="display:flex;align-items:center;">${dot}${i.produto}</div></td>
+      <td><div style="display:flex;align-items:center;">${dot}${i.produto}</div>${obsLine}</td>
       <td class="num">${fmtKg(i.qty)} kg<span class="pct">${(i.qty/total*100).toFixed(1)}%</span></td>
     </tr>`;
   }).join('');
@@ -1651,6 +1670,8 @@ function renderReactors(crpSheet, allRows, mrpItems){
 
   const activeProductsR = {};  // key → 'active'
   const doneProductsR = {};    // key → 'done'
+  const stoppedProductsR = {}; // key → 'stopped'
+  const obsProductsR = {};     // key → texto OBS
   if(allRows){
     allRows.forEach(r => {
       const st = (r['Status']||'').toString().trim().toUpperCase();
@@ -1658,14 +1679,19 @@ function renderReactors(crpSheet, allRows, mrpItems){
       const qty = Math.round(Number(r['Quantidade_Produzida_kg'])||0);
       if(!p) return;
       const key = makeKeyR(p, qty);
-      if(st === 'EM ANDAMENTO' || st === 'PARADO!'){
+      if(st === 'PARADO!'){
+        stoppedProductsR[key] = true;
+        stoppedProductsR[p] = true; // fallback por nome
+        const obsTxt = (r['OBS']||'').toString().trim();
+        if(obsTxt){ obsProductsR[key] = obsTxt; obsProductsR[p] = obsTxt; }
+      } else if(st === 'EM ANDAMENTO'){
         activeProductsR[key] = true;
         activeProductsR[p] = true; // fallback por nome
       } else if(st === 'FINALIZADO'){
         const data = r['DATA'] ? new Date(r['DATA']) : null;
         if(data && data >= inicioSemana2){
-          if(!activeProductsR[key]) doneProductsR[key] = true;
-          if(!activeProductsR[p]) doneProductsR[p] = true;
+          if(!activeProductsR[key] && !stoppedProductsR[key]) doneProductsR[key] = true;
+          if(!activeProductsR[p] && !stoppedProductsR[p]) doneProductsR[p] = true;
         }
       }
     });
@@ -1678,15 +1704,23 @@ function renderReactors(crpSheet, allRows, mrpItems){
     const isDup = (mrpCountR[p]||0) > 1;
     if(isDup){
       // produto duplicado: usa nome+qty
+      if(stoppedProductsR[key]) return 'stopped';
       if(activeProductsR[key]) return 'active';
       if(doneProductsR[key]) return 'done';
       return 'none';
     } else {
       // produto único: usa só nome
+      if(stoppedProductsR[p]) return 'stopped';
       if(activeProductsR[p]) return 'active';
       if(doneProductsR[p]) return 'done';
       return 'none';
     }
+  }
+
+  function getReactorObs(produto, qty){
+    const p = produto.toLowerCase().trim();
+    const key = makeKeyR(p, qty);
+    return obsProductsR[key] || obsProductsR[p] || '';
   }
 
   const reactorMaps = parseReactorProducts(rows);
@@ -1707,13 +1741,18 @@ function renderReactors(crpSheet, allRows, mrpItems){
           ${r.products.length ? `<div class="reactor-products">${r.products.map(p => {
             const reactorSt = getReactorStatus(p.produto, p.qty);
             const isActive = reactorSt === 'active';
+            const isStopped = reactorSt === 'stopped';
             const isDone = reactorSt === 'done';
-            const dot = isActive
+            const obsTxt = isStopped ? getReactorObs(p.produto, p.qty) : '';
+            const dot = isStopped
+              ? `<span title="Parado${obsTxt ? ': '+obsTxt : ''}" style="width:9px;height:9px;border-radius:50%;background:var(--purple);display:inline-block;flex-shrink:0;margin-right:5px;"></span>`
+              : isActive
               ? `<span title="Em andamento" style="width:9px;height:9px;border-radius:50%;background:var(--dot-andamento);display:inline-block;flex-shrink:0;margin-right:5px;"></span>`
               : isDone
               ? `<span title="Finalizado" style="width:9px;height:9px;border-radius:50%;background:var(--dot-ok);display:inline-block;flex-shrink:0;margin-right:5px;"></span>`
               : `<span title="Planejado" style="width:9px;height:9px;border-radius:50%;background:var(--dot-planejado);display:inline-block;flex-shrink:0;margin-right:5px;"></span>`;
-            return `<div style="display:flex;align-items:center;">${dot}${p.produto} <span style="margin-left:auto;">${fmtKg(p.qty)} kg</span></div>`;
+            const obsLine = (isStopped && obsTxt) ? `<div style="font-size:11px;color:var(--purple);margin-left:14px;">⏸ ${obsTxt}</div>` : '';
+            return `<div><div style="display:flex;align-items:center;">${dot}${p.produto} <span style="margin-left:auto;">${fmtKg(p.qty)} kg</span></div>${obsLine}</div>`;
           }).join('')}</div>` : '<div class="reactor-products empty">Nada planejado</div>'}
         </div>
       </div>
