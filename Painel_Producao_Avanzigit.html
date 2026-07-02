@@ -2431,7 +2431,8 @@ function renderOEE(){
       reactors[rNum].finalizado.push({ mins, kg, produto, conforme: qual === 'conforme' });
     }
     if(st === 'PARADO!'){
-      reactors[rNum].parado.push({ mins });
+      const paradoMinsVal = parseMinutesOEE(r['TEMPO_PARADO']);
+      reactors[rNum].parado.push({ mins: paradoMinsVal });
     }
   });
 
