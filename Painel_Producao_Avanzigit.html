@@ -189,6 +189,7 @@
   .badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;margin-top:6px;}
   .badge.ok{background:var(--ok-bg);color:var(--ok);}
   .badge.warn{background:var(--warn-bg);color:var(--warn);}
+  .badge.purple{background:var(--purple-bg);color:var(--purple);}
   .reactor-products{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:12px;}
   .reactor-products div{display:flex;justify-content:space-between;gap:8px;padding:2px 0;color:var(--ink-soft);}
   .reactor-products span{font-family:'IBM Plex Mono';color:var(--ink);white-space:nowrap;}
@@ -1092,12 +1093,15 @@ function renderProductList(sortedList){
   `).join('');
 }
 
-function gaugeSvg(pct, overCap){
+function gaugeSvg(pct, overCap, hasStopped, allDone){
   const r = 34, c = 2*Math.PI*r;
   const clamped = Math.min(pct,1);
   const offset = c * (1-clamped);
   const s = getComputedStyle(document.documentElement);
-  const color = overCap ? s.getPropertyValue('--warn').trim() : s.getPropertyValue('--accent').trim();
+  const color = hasStopped ? s.getPropertyValue('--purple').trim()
+    : overCap ? s.getPropertyValue('--warn').trim()
+    : allDone ? s.getPropertyValue('--ok').trim()
+    : s.getPropertyValue('--accent').trim();
   return `
     <svg class="gauge-svg" viewBox="0 0 84 84">
       <circle cx="42" cy="42" r="${r}" fill="none" stroke="var(--gauge-track)" stroke-width="9"/>
@@ -1731,13 +1735,20 @@ function renderReactors(crpSheet, allRows, mrpItems){
     const horasExibir = (r.horasRestantes !== undefined) ? r.horasRestantes : r.horas;
     const pct = r.capacidade ? horasExibir/r.capacidade : 0;
     const over = pct > 1;
+    const hasStopped = r.products.some(p => getReactorStatus(p.produto, p.qty) === 'stopped');
+    const allDone = r.products.length > 0 && r.products.every(p => getReactorStatus(p.produto, p.qty) === 'done');
+    let badgeClass, badgeText;
+    if(hasStopped){ badgeClass = 'purple'; badgeText = 'Parado'; }
+    else if(over){ badgeClass = 'warn'; badgeText = 'Estoura'; }
+    else if(allDone){ badgeClass = 'ok'; badgeText = 'Finalizado'; }
+    else { badgeClass = 'ok'; badgeText = 'Cabe'; }
     return `
       <div class="gauge-card">
-        ${gaugeSvg(pct, over)}
+        ${gaugeSvg(pct, over, hasStopped, allDone)}
         <div class="gauge-info">
           <div class="gname">${r.name}</div>
           <div class="gpct">${horasExibir.toFixed(1)}h <span style="font-size:12px;color:var(--ink-faint);font-family:'IBM Plex Sans';">/ ${r.capacidade.toFixed(0)}h</span></div>
-          <span class="badge ${over ? 'warn' : 'ok'}">${over ? 'Estoura' : 'Cabe'}</span>
+          <span class="badge ${badgeClass}">${badgeText}</span>
           ${r.products.length ? `<div class="reactor-products">${r.products.map(p => {
             const reactorSt = getReactorStatus(p.produto, p.qty);
             const isActive = reactorSt === 'active';
