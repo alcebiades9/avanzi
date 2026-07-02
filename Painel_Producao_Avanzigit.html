@@ -2557,17 +2557,11 @@ function renderOEE(){
 
     if(st === 'FINALIZADO'){
       reactors[rNum].finalizado.push({ mins, kg, produto, conforme: qual === 'conforme' });
-      // Lote já terminou: sabemos o tempo rodando total, então a parada registrada pode entrar na conta
-      if(paradoMinsVal > 0){
-        reactors[rNum].parado.push({ mins: paradoMinsVal });
-      }
     }
-    // Lote parado agora mesmo: sinal urgente, conta na hora
-    if(st === 'PARADO!' && paradoMinsVal > 0){
+    // Conta a parada sempre, não importa o status atual (FINALIZADO, EM ANDAMENTO ou PARADO!)
+    if(paradoMinsVal > 0){
       reactors[rNum].parado.push({ mins: paradoMinsVal });
     }
-    // Lote EM ANDAMENTO com uma parada já resolvida no meio do caminho: espera finalizar,
-    // porque ainda não sabemos o tempo rodando total desse lote (Tempo_Total só preenche ao finalizar)
   });
 
   const results = [];
