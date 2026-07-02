@@ -2430,12 +2430,16 @@ function renderOEE(){
     const kg = Number(r['Quantidade_Produzida_kg']) || 0;
     const produto = (r['PRODUTO']||'').toString().trim();
     const qual = (r['QUALIDADE']||'').toString().trim().toLowerCase();
+    const paradoMinsVal = parseMinutesOEE(r['TEMPO_PARADO']);
 
     if(st === 'FINALIZADO'){
       reactors[rNum].finalizado.push({ mins, kg, produto, conforme: qual === 'conforme' });
+      // Mesmo já finalizado, se teve uma parada registrada durante o processo, conta pra disponibilidade
+      if(paradoMinsVal > 0){
+        reactors[rNum].parado.push({ mins: paradoMinsVal });
+      }
     }
     if(st === 'PARADO!'){
-      const paradoMinsVal = parseMinutesOEE(r['TEMPO_PARADO']);
       reactors[rNum].parado.push({ mins: paradoMinsVal });
     }
   });
