@@ -232,7 +232,11 @@
   .oee-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:background .3s,border-color .3s;}
   .oee-card h4{margin:0;font-size:14px;font-weight:600;text-align:center;}
   .oee-card .oee-value{font-family:'IBM Plex Mono';font-size:28px;font-weight:700;}
-  .oee-breakdown{display:flex;gap:16px;width:100%;justify-content:center;margin-top:8px;}
+  .oee-breakdown{display:flex;gap:16px;width:100%;justify-content:center;margin-top:8px;flex-wrap:wrap;}
+  @media(max-width:480px){
+    .oee-breakdown{gap:10px;}
+    .oee-metric{flex:1 1 28%;min-width:64px;}
+  }
   .oee-metric{text-align:center;}
   .oee-metric .oee-metric-label{font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-faint);}
   .oee-metric .oee-metric-value{font-family:'IBM Plex Mono';font-size:16px;font-weight:600;}
@@ -1762,8 +1766,8 @@ function renderReactors(crpSheet, allRows, mrpItems){
               : isDone
               ? `<span title="Finalizado" style="width:9px;height:9px;border-radius:50%;background:var(--dot-ok);display:inline-block;flex-shrink:0;margin-right:5px;"></span>`
               : `<span title="Planejado" style="width:9px;height:9px;border-radius:50%;background:var(--dot-planejado);display:inline-block;flex-shrink:0;margin-right:5px;"></span>`;
-            const obsLine = (isStopped && obsTxt) ? `<div style="font-size:11px;color:var(--purple);margin-left:14px;">⏸ ${obsTxt}</div>` : '';
-            return `<div><div style="display:flex;align-items:center;">${dot}${p.produto} <span style="margin-left:auto;">${fmtKg(p.qty)} kg</span></div>${obsLine}</div>`;
+            const obsLine = (isStopped && obsTxt) ? `<div style="display:block;font-size:11px;color:var(--purple);margin-left:14px;word-break:break-word;">⏸ ${obsTxt}</div>` : '';
+            return `<div style="display:block;"><div style="display:flex;align-items:center;flex-wrap:wrap;">${dot}<span style="word-break:break-word;">${p.produto}</span> <span style="margin-left:auto;">${fmtKg(p.qty)} kg</span></div>${obsLine}</div>`;
           }).join('')}</div>` : '<div class="reactor-products empty">Nada planejado</div>'}
         </div>
       </div>
