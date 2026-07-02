@@ -2374,6 +2374,55 @@ function computeProductPadroes(){
   return padroes;
 }
 
+function computeParadaPareto(rows){
+  // Agrupa por texto da coluna OBS (motivo da parada), somando o tempo de TEMPO_PARADO
+  const acc = {};
+  rows.forEach(r => {
+    const obsTxt = (r['OBS']||'').toString().trim();
+    const paradaMins = parseMinutesOEE(r['TEMPO_PARADO']);
+    if(!obsTxt || paradaMins <= 0) return;
+    const key = obsTxt.toLowerCase();
+    if(!acc[key]) acc[key] = { label: obsTxt, mins: 0, count: 0, reatores: new Set() };
+    acc[key].mins += paradaMins;
+    acc[key].count += 1;
+    const rNum = Number(r['REATOR']);
+    if(rNum >= 1 && rNum <= 4) acc[key].reatores.add(rNum);
+  });
+  return Object.values(acc).sort((a,b) => b.mins - a.mins);
+}
+
+function renderParadaPareto(rows){
+  const pareto = computeParadaPareto(rows);
+  if(!pareto.length){
+    return `<div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:24px;margin-top:24px;">
+      <h4 style="margin:0 0 4px;font-size:16px;">Pareto de Paradas</h4>
+      <p style="color:var(--ink-faint);font-size:13px;margin:8px 0 0;">Nenhuma parada com motivo registrado nesse período. 🎉</p>
+    </div>`;
+  }
+  const totalMins = pareto.reduce((s,p)=>s+p.mins,0);
+  const maxMins = pareto[0].mins;
+  const rowsHtml = pareto.map(p => {
+    const pct = totalMins>0 ? (p.mins/totalMins*100) : 0;
+    const barWidth = maxMins>0 ? (p.mins/maxMins*100) : 0;
+    const horas = (p.mins/60).toFixed(1);
+    const reatoresTxt = [...p.reatores].sort().map(n => 'R'+n).join(', ');
+    return `<div style="margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:4px;gap:8px;flex-wrap:wrap;">
+        <span style="flex:1;min-width:0;">${p.label} <span style="color:var(--ink-faint);font-size:11px;">${reatoresTxt ? '· '+reatoresTxt+' · ' : '· '}${p.count} ${p.count===1?'ocorrência':'ocorrências'}</span></span>
+        <span style="font-family:'IBM Plex Mono';font-weight:600;white-space:nowrap;">${horas}h <span style="color:var(--ink-faint);">(${pct.toFixed(0)}%)</span></span>
+      </div>
+      <div style="width:100%;height:10px;background:var(--gauge-track);border-radius:5px;overflow:hidden;">
+        <div style="width:${barWidth}%;height:100%;background:var(--warn);border-radius:5px;"></div>
+      </div>
+    </div>`;
+  }).join('');
+  return `<div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:24px;margin-top:24px;">
+    <h4 style="margin:0 0 4px;font-size:16px;">Pareto de Paradas</h4>
+    <p style="color:var(--ink-faint);font-size:12px;margin:0 0 16px;">Motivos que mais tiraram tempo de produção, do maior pro menor. Total: ${(totalMins/60).toFixed(1)}h de parada no período.</p>
+    ${rowsHtml}
+  </div>`;
+}
+
 function renderOEE(){
   const container = document.getElementById('oeeContent');
   const monthSelect = document.getElementById('oeeMonthFilter');
@@ -2516,6 +2565,8 @@ function renderOEE(){
     <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--accent);margin-right:4px;"></span>60-84% Bom</span>
     <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--warn);margin-right:4px;"></span>&lt; 60% Precisa melhorar</span>
   </div>`;
+
+  html += renderParadaPareto(filtered);
 
   container.innerHTML = html;
 }
