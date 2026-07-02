@@ -230,7 +230,7 @@
   .oee-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;}
   .oee-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:background .3s,border-color .3s;}
   .oee-card h4{margin:0;font-size:14px;font-weight:600;text-align:center;}
-  .oee-card .oee-value{font-family:'IBM Plex Mono';font-size:28px;font-weight:700;color:var(--ink);}
+  .oee-card .oee-value{font-family:'IBM Plex Mono';font-size:28px;font-weight:700;}
   .oee-breakdown{display:flex;gap:16px;width:100%;justify-content:center;margin-top:8px;}
   .oee-metric{text-align:center;}
   .oee-metric .oee-metric-label{font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-faint);}
@@ -240,7 +240,7 @@
   .oee-general{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:24px;display:flex;align-items:center;gap:24px;transition:background .3s,border-color .3s;}
   .oee-general-info{flex:1;}
   .oee-general-info h4{margin:0 0 4px;font-size:16px;}
-  .oee-general-info .oee-value{font-family:'IBM Plex Mono';font-size:36px;font-weight:700;color:var(--ink);}
+  .oee-general-info .oee-value{font-family:'IBM Plex Mono';font-size:36px;font-weight:700;}
   .oee-general-breakdown{display:flex;gap:20px;}
   .oee-level{font-size:11px;color:var(--ink-soft);margin-top:4px;}
   @media(max-width:600px){
@@ -520,9 +520,6 @@
             <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);">
               <span style="width:10px;height:10px;border-radius:50%;background:var(--dot-planejado);display:inline-block;flex-shrink:0;"></span> Planejado
             </div>
-            <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);">
-              <span style="width:10px;height:10px;border-radius:50%;background:var(--purple);display:inline-block;flex-shrink:0;"></span> Parado
-            </div>
             <span class="note">Esta semana</span>
           </div>
         </div>
@@ -542,9 +539,6 @@
           </div>
           <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);">
             <span style="width:10px;height:10px;border-radius:50%;background:var(--dot-planejado);display:inline-block;flex-shrink:0;"></span> Planejado
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);">
-            <span style="width:10px;height:10px;border-radius:50%;background:var(--purple);display:inline-block;flex-shrink:0;"></span> Parado
           </div>
           <span class="note">MRP &middot; atualize toda semana na planilha</span>
         </div>
@@ -593,7 +587,12 @@
             </select>
           </div>
         </div>
-        <p style="color:var(--ink-soft);font-size:13px;margin:4px 0 20px;">Disponibilidade × Qualidade = OEE. Só lotes de REATOR</p>
+        <p style="color:var(--ink-soft);font-size:13px;margin:4px 0 4px;">Disponibilidade × Performance × Qualidade = OEE. Só lotes com coluna REATOR preenchida.</p>
+        <p style="color:var(--ink-faint);font-size:12px;margin:0 0 20px;max-width:640px;line-height:1.5;">
+          <b>Disponibilidade</b>: quanto tempo o reator rodou vs. ficou parado.
+          <b>Performance</b>: compara a velocidade real de cada lote (min/kg) com a média histórica do produto — acima de 100% é mais rápido que o normal, abaixo é mais lento.
+          <b>Qualidade</b>: % dos lotes que saíram conforme.
+        </p>
         <div id="oeeContent" style="display:flex;flex-direction:column;gap:24px;">
           <p style="color:var(--ink-faint);font-size:14px;">Nenhum dado com REATOR preenchido encontrado.</p>
         </div>
@@ -671,7 +670,6 @@ function toggleTheme() {
   if (trendChartInstance && window._lastChartLabels) {
     renderTrend(window._lastChartLabels, window._lastChartValues);
   }
-  if (allProductionRows.length) renderOEE();
 }
 (function() {
   const saved = localStorage.getItem('painel-avanzi-theme');
@@ -1088,12 +1086,12 @@ function renderProductList(sortedList){
   `).join('');
 }
 
-function gaugeSvg(pct, overCap, hasParado){
+function gaugeSvg(pct, overCap){
   const r = 34, c = 2*Math.PI*r;
   const clamped = Math.min(pct,1);
   const offset = c * (1-clamped);
   const s = getComputedStyle(document.documentElement);
-  const color = hasParado ? s.getPropertyValue('--purple').trim() : overCap ? s.getPropertyValue('--warn').trim() : s.getPropertyValue('--accent').trim();
+  const color = overCap ? s.getPropertyValue('--warn').trim() : s.getPropertyValue('--accent').trim();
   return `
     <svg class="gauge-svg" viewBox="0 0 84 84">
       <circle cx="42" cy="42" r="${r}" fill="none" stroke="var(--gauge-track)" stroke-width="9"/>
@@ -1417,12 +1415,7 @@ function renderWeekPlan(mrpSheet, allRows){
       const qty = Math.round(Number(r['Quantidade_Produzida_kg'])||0);
       if(!p) return;
       const key = p + '|' + qty;
-      if(st === 'PARADO!'){
-        statusMap[key] = 'parado';
-        if((mrpCount[p]||0) <= 1) statusMapName[p] = 'parado';
-        return;
-      }
-      if(st === 'EM ANDAMENTO'){
+      if(st === 'EM ANDAMENTO' || st === 'PARADO!'){
         statusMap[key] = 'active';
         if((mrpCount[p]||0) <= 1) statusMapName[p] = 'active';
         return;
@@ -1444,9 +1437,7 @@ function renderWeekPlan(mrpSheet, allRows){
     const pLow = i.produto.toLowerCase().trim();
     // usa nome+qty; fallback por nome só se produto é único no MRP
     const st = statusMap[key] || ((mrpCount[pLow]||0) <= 1 ? statusMapName[pLow] : undefined);
-    const dot = st === 'parado'
-      ? `<span style="width:9px;height:9px;border-radius:50%;background:var(--purple);display:inline-block;flex-shrink:0;margin-right:8px;"></span>`
-      : st === 'active'
+    const dot = st === 'active'
       ? `<span style="width:9px;height:9px;border-radius:50%;background:var(--dot-andamento);display:inline-block;flex-shrink:0;margin-right:8px;"></span>`
       : st === 'done'
       ? `<span style="width:9px;height:9px;border-radius:50%;background:var(--dot-ok);display:inline-block;flex-shrink:0;margin-right:8px;"></span>`
@@ -1660,8 +1651,6 @@ function renderReactors(crpSheet, allRows, mrpItems){
 
   const activeProductsR = {};  // key → 'active'
   const doneProductsR = {};    // key → 'done'
-  const paradoProductsR = {};  // key → 'parado'
-  const paradoObsR = {};       // key → texto da OBS
   if(allRows){
     allRows.forEach(r => {
       const st = (r['Status']||'').toString().trim().toUpperCase();
@@ -1669,19 +1658,14 @@ function renderReactors(crpSheet, allRows, mrpItems){
       const qty = Math.round(Number(r['Quantidade_Produzida_kg'])||0);
       if(!p) return;
       const key = makeKeyR(p, qty);
-      const obs = (r['OBS']||'').toString().trim();
-      if(st === 'PARADO!'){
-        paradoProductsR[key] = true;
-        paradoProductsR[p] = true;
-        if(obs){ paradoObsR[key] = obs; paradoObsR[p] = obs; }
-      } else if(st === 'EM ANDAMENTO'){
+      if(st === 'EM ANDAMENTO' || st === 'PARADO!'){
         activeProductsR[key] = true;
-        activeProductsR[p] = true;
+        activeProductsR[p] = true; // fallback por nome
       } else if(st === 'FINALIZADO'){
         const data = r['DATA'] ? new Date(r['DATA']) : null;
         if(data && data >= inicioSemana2){
-          if(!activeProductsR[key] && !paradoProductsR[key]) doneProductsR[key] = true;
-          if(!activeProductsR[p] && !paradoProductsR[p]) doneProductsR[p] = true;
+          if(!activeProductsR[key]) doneProductsR[key] = true;
+          if(!activeProductsR[p]) doneProductsR[p] = true;
         }
       }
     });
@@ -1693,22 +1677,16 @@ function renderReactors(crpSheet, allRows, mrpItems){
     const key = makeKeyR(p, qty);
     const isDup = (mrpCountR[p]||0) > 1;
     if(isDup){
-      if(paradoProductsR[key]) return 'parado';
+      // produto duplicado: usa nome+qty
       if(activeProductsR[key]) return 'active';
       if(doneProductsR[key]) return 'done';
       return 'none';
     } else {
-      if(paradoProductsR[p]) return 'parado';
+      // produto único: usa só nome
       if(activeProductsR[p]) return 'active';
       if(doneProductsR[p]) return 'done';
       return 'none';
     }
-  }
-
-  function getParadoObs(produto, qty){
-    const p = produto.toLowerCase().trim();
-    const key = makeKeyR(p, qty);
-    return paradoObsR[key] || paradoObsR[p] || '';
   }
 
   const reactorMaps = parseReactorProducts(rows);
@@ -1719,10 +1697,9 @@ function renderReactors(crpSheet, allRows, mrpItems){
     const horasExibir = (r.horasRestantes !== undefined) ? r.horasRestantes : r.horas;
     const pct = r.capacidade ? horasExibir/r.capacidade : 0;
     const over = pct > 1;
-    const hasParado = r.products.some(p => getReactorStatus(p.produto, p.qty) === 'parado');
     return `
       <div class="gauge-card">
-        ${gaugeSvg(pct, over, hasParado)}
+        ${gaugeSvg(pct, over)}
         <div class="gauge-info">
           <div class="gname">${r.name}</div>
           <div class="gpct">${horasExibir.toFixed(1)}h <span style="font-size:12px;color:var(--ink-faint);font-family:'IBM Plex Sans';">/ ${r.capacidade.toFixed(0)}h</span></div>
@@ -1731,17 +1708,12 @@ function renderReactors(crpSheet, allRows, mrpItems){
             const reactorSt = getReactorStatus(p.produto, p.qty);
             const isActive = reactorSt === 'active';
             const isDone = reactorSt === 'done';
-            const isParado = reactorSt === 'parado';
-            const obsText = isParado ? getParadoObs(p.produto, p.qty) : '';
-            const dot = isParado
-              ? `<span title="Parado${obsText ? ': ' + obsText : ''}" style="width:9px;height:9px;border-radius:50%;background:var(--purple);display:inline-block;flex-shrink:0;margin-right:5px;cursor:help;"></span>`
-              : isActive
+            const dot = isActive
               ? `<span title="Em andamento" style="width:9px;height:9px;border-radius:50%;background:var(--dot-andamento);display:inline-block;flex-shrink:0;margin-right:5px;"></span>`
               : isDone
               ? `<span title="Finalizado" style="width:9px;height:9px;border-radius:50%;background:var(--dot-ok);display:inline-block;flex-shrink:0;margin-right:5px;"></span>`
               : `<span title="Planejado" style="width:9px;height:9px;border-radius:50%;background:var(--dot-planejado);display:inline-block;flex-shrink:0;margin-right:5px;"></span>`;
-            const obsLabel = isParado && obsText ? `<div style="font-size:10px;color:var(--purple);margin-top:2px;">⚠ ${obsText}</div>` : '';
-            return `<div style="display:flex;align-items:center;">${dot}${p.produto} <span style="margin-left:auto;">${fmtKg(p.qty)} kg</span></div>${obsLabel}`;
+            return `<div style="display:flex;align-items:center;">${dot}${p.produto} <span style="margin-left:auto;">${fmtKg(p.qty)} kg</span></div>`;
           }).join('')}</div>` : '<div class="reactor-products empty">Nada planejado</div>'}
         </div>
       </div>
@@ -2320,17 +2292,40 @@ function oeeGaugeSvg(pct, color, size){
 
 function oeeMetricHtml(label, value){
   const color = getOeeColor(value);
+  const barWidth = Math.min(value, 100);
   return `<div class="oee-metric">
     <div class="oee-metric-label">${label}</div>
     <div class="oee-metric-value" style="color:${color};">${value}%</div>
-    <div class="oee-bar"><div class="oee-bar-fill" style="width:${value}%;background:${color};"></div></div>
+    <div class="oee-bar"><div class="oee-bar-fill" style="width:${barWidth}%;background:${color};"></div></div>
   </div>`;
+}
+
+function computeProductPadroes(){
+  // Media historica de min/kg por produto, usando TODO o historico (igual a coluna MIN/KG MEDIO do CRP)
+  const acc = {};
+  allProductionRows.forEach(r => {
+    const st = (r['Status']||'').toString().trim().toUpperCase();
+    if(st !== 'FINALIZADO') return;
+    const kg = Number(r['Quantidade_Produzida_kg']) || 0;
+    const mins = parseMinutesOEE(r['Tempo_Total']);
+    if(kg <= 0 || mins <= 0) return;
+    const p = (r['PRODUTO']||'').toString().trim();
+    if(!p) return;
+    if(!acc[p]) acc[p] = { soma:0, n:0 };
+    acc[p].soma += mins/kg;
+    acc[p].n += 1;
+  });
+  const padroes = {};
+  Object.keys(acc).forEach(p => { padroes[p] = acc[p].soma / acc[p].n; });
+  return padroes;
 }
 
 function renderOEE(){
   const container = document.getElementById('oeeContent');
   const monthSelect = document.getElementById('oeeMonthFilter');
   if(!container) return;
+
+  const padroes = computeProductPadroes();
 
   const withReactor = allProductionRows.filter(r => {
     const rNum = Number(r['REATOR']);
@@ -2375,38 +2370,44 @@ function renderOEE(){
   const reactors = {};
   filtered.forEach(r => {
     const rNum = Number(r['REATOR']);
-    if(!reactors[rNum]) reactors[rNum] = { finalizado:[], paradoTotal:0, prodTotal:0 };
+    if(!reactors[rNum]) reactors[rNum] = { finalizado:[], parado:[] };
     const st = (r['Status']||'').toString().trim().toUpperCase();
     const mins = parseMinutesOEE(r['Tempo_Total']);
-    const paradoMins = parseMinutesOEE(r['TEMPO_PARADO']);
+    const kg = Number(r['Quantidade_Produzida_kg']) || 0;
+    const produto = (r['PRODUTO']||'').toString().trim();
     const qual = (r['QUALIDADE']||'').toString().trim().toLowerCase();
 
     if(st === 'FINALIZADO'){
-      reactors[rNum].finalizado.push({ mins, conforme: qual === 'conforme' });
-      reactors[rNum].prodTotal += mins;
-      reactors[rNum].paradoTotal += paradoMins;
+      reactors[rNum].finalizado.push({ mins, kg, produto, conforme: qual === 'conforme' });
     }
     if(st === 'PARADO!'){
-      reactors[rNum].prodTotal += mins;
-      reactors[rNum].paradoTotal += paradoMins;
+      reactors[rNum].parado.push({ mins });
     }
   });
 
   const results = [];
   for(const [rNum, data] of Object.entries(reactors)){
-    const prodMins = data.prodTotal;
-    const paradoMins = data.paradoTotal;
+    const prodMins = data.finalizado.reduce((s,r)=>s+r.mins,0);
+    const paradoMins = data.parado.reduce((s,r)=>s+r.mins,0);
     const totalMins = prodMins + paradoMins;
 
     const disponibilidade = totalMins > 0 ? (prodMins / totalMins) * 100 : 100;
     const totalFin = data.finalizado.length;
     const conformes = data.finalizado.filter(r=>r.conforme).length;
     const qualidade = totalFin > 0 ? (conformes / totalFin) * 100 : 100;
-    const oee = (disponibilidade * qualidade) / 100;
+
+    // Performance: so entram lotes que tem tempo real E padrao conhecido pro produto
+    // (mesma regra usada no CRP do Excel, pra nao desbalancear a conta)
+    const lotesComPadrao = data.finalizado.filter(l => l.mins > 0 && l.kg > 0 && padroes[l.produto] !== undefined);
+    const minRealPerf = lotesComPadrao.reduce((s,l) => s + l.mins, 0);
+    const minPadraoPerf = lotesComPadrao.reduce((s,l) => s + padroes[l.produto] * l.kg, 0);
+    const performance = minRealPerf > 0 ? (minPadraoPerf / minRealPerf) * 100 : 100;
+
+    const oee = (disponibilidade * performance * qualidade) / 10000;
 
     results.push({
       reactor: parseInt(rNum), name: REACTOR_NAMES[rNum] || 'Reator '+rNum,
-      disponibilidade: Math.round(disponibilidade), qualidade: Math.round(qualidade),
+      disponibilidade: Math.round(disponibilidade), performance: Math.round(performance), qualidade: Math.round(qualidade),
       oee: Math.round(oee), lotes: totalFin, paradoMins, prodMins
     });
   }
@@ -2414,19 +2415,21 @@ function renderOEE(){
 
   const n = results.length || 1;
   const geralDisp = Math.round(results.reduce((s,r)=>s+r.disponibilidade,0)/n);
+  const geralPerf = Math.round(results.reduce((s,r)=>s+r.performance,0)/n);
   const geralQual = Math.round(results.reduce((s,r)=>s+r.qualidade,0)/n);
-  const geralOee = Math.round((geralDisp * geralQual) / 100);
+  const geralOee = Math.round((geralDisp * geralPerf * geralQual) / 10000);
   const geralColor = getOeeColor(geralOee);
 
   let html = `<div class="oee-general">
     <div style="flex-shrink:0;">${oeeGaugeSvg(geralOee/100, geralColor, 100)}</div>
     <div class="oee-general-info">
       <h4>OEE Geral da Fábrica</h4>
-      <div class="oee-value">${geralOee}%</div>
+      <div class="oee-value" style="color:${geralColor};">${geralOee}%</div>
       <div class="oee-level">${getOeeLevel(geralOee)} — Média de ${n} reator${n>1?'es':''}</div>
     </div>
     <div class="oee-general-breakdown">
       ${oeeMetricHtml('Disponibilidade', geralDisp)}
+      ${oeeMetricHtml('Performance', geralPerf)}
       ${oeeMetricHtml('Qualidade', geralQual)}
     </div>
   </div>`;
@@ -2437,10 +2440,11 @@ function renderOEE(){
     html += `<div class="oee-card">
       ${oeeGaugeSvg(r.oee/100, color, 84)}
       <h4>${r.name}</h4>
-      <div class="oee-value">${r.oee}%</div>
+      <div class="oee-value" style="color:${color};">${r.oee}%</div>
       <div style="font-size:12px;color:var(--ink-faint);">${r.lotes} lote${r.lotes!==1?'s':''} finalizado${r.lotes!==1?'s':''}</div>
       <div class="oee-breakdown">
         ${oeeMetricHtml('Dispon.', r.disponibilidade)}
+        ${oeeMetricHtml('Perform.', r.performance)}
         ${oeeMetricHtml('Qualid.', r.qualidade)}
       </div>
       ${r.paradoMins > 0 ? `<div style="font-size:11px;color:var(--warn);margin-top:4px;">⚠ ${Math.round(r.paradoMins/60*10)/10}h parado</div>` : ''}
