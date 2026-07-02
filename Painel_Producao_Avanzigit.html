@@ -2557,12 +2557,10 @@ function renderOEE(){
 
     if(st === 'FINALIZADO'){
       reactors[rNum].finalizado.push({ mins, kg, produto, conforme: qual === 'conforme' });
-      // Mesmo já finalizado, se teve uma parada registrada durante o processo, conta pra disponibilidade
-      if(paradoMinsVal > 0){
-        reactors[rNum].parado.push({ mins: paradoMinsVal });
-      }
     }
-    if(st === 'PARADO!'){
+    // Conta a parada não importa o status atual (FINALIZADO, EM ANDAMENTO ou PARADO!) —
+    // se tem tempo registrado em TEMPO_PARADO, esse tempo já aconteceu e conta pra disponibilidade
+    if(paradoMinsVal > 0){
       reactors[rNum].parado.push({ mins: paradoMinsVal });
     }
   });
