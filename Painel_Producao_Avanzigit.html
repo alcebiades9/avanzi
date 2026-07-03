@@ -700,12 +700,21 @@
         <option value="">Selecione o mês...</option>
       </select>
     </div>
-    <div class="modal-field">
+    <div id="modalSemanaWrap" class="modal-field">
       <label>Semana</label>
       <select id="modalSemana">
         <option value="">Selecione a semana...</option>
       </select>
     </div>
+    <div id="modalDatasWrap" class="modal-field" style="display:none;">
+      <label>De</label>
+      <input type="date" id="modalDataInicio" style="width:100%;padding:8px 10px;border:1px solid var(--select-border);border-radius:6px;background:var(--select-bg);color:var(--ink);font-size:13px;box-sizing:border-box;">
+      <label style="margin-top:8px;display:block;">Até</label>
+      <input type="date" id="modalDataFim" style="width:100%;padding:8px 10px;border:1px solid var(--select-border);border-radius:6px;background:var(--select-bg);color:var(--ink);font-size:13px;box-sizing:border-box;">
+    </div>
+    <p style="margin-top:-4px;">
+      <a href="#" id="modalToggleDatasLink" onclick="toggleModalDatas(); return false;" style="font-size:12.5px;color:var(--accent);text-decoration:none;">📅 Prefiro escolher as datas manualmente (útil no início/fim do mês)</a>
+    </p>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="fecharModal()">Cancelar</button>
       <button class="btn-pdf" onclick="gerarRelatorioPDF()">⬇ Gerar PDF</button>
@@ -1883,6 +1892,32 @@ function renderReactors(crpSheet, allRows, mrpItems){
 // ── MODAL RELATÓRIO SEMANAL ─────────────────────────────────────────────────
 const MONTH_NAMES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
+function toggleModalDatas(){
+  const semanaWrap = document.getElementById('modalSemanaWrap');
+  const datasWrap = document.getElementById('modalDatasWrap');
+  const link = document.getElementById('modalToggleDatasLink');
+  const usandoDatas = datasWrap.style.display !== 'none';
+  if(usandoDatas){
+    // Volta pro modo semana
+    datasWrap.style.display = 'none';
+    semanaWrap.style.display = '';
+    link.textContent = '📅 Prefiro escolher as datas manualmente (útil no início/fim do mês)';
+  } else {
+    // Ativa o modo de datas manuais, pré-preenchendo com o mês selecionado inteiro
+    semanaWrap.style.display = 'none';
+    datasWrap.style.display = '';
+    link.textContent = '← Voltar a escolher por semana';
+    const mes = document.getElementById('modalMes').value;
+    if(mes){
+      const [ano, mesNum] = mes.split('-').map(Number);
+      const primeiroDia = new Date(ano, mesNum-1, 1);
+      const ultimoDia = new Date(ano, mesNum, 0);
+      document.getElementById('modalDataInicio').value = primeiroDia.toISOString().slice(0,10);
+      document.getElementById('modalDataFim').value = ultimoDia.toISOString().slice(0,10);
+    }
+  }
+}
+
 function abrirModalRelatorio(){
   // Pegar meses disponíveis
   const meses = new Set();
@@ -1900,6 +1935,10 @@ function abrirModalRelatorio(){
     }).join('');
   // Pré-selecionar mês mais recente
   if(sorted.length) { sel.value = sorted[0]; atualizarSemanasModal(); }
+  // Sempre reabre no modo "semana" por padrão
+  document.getElementById('modalSemanaWrap').style.display = '';
+  document.getElementById('modalDatasWrap').style.display = 'none';
+  document.getElementById('modalToggleDatasLink').textContent = '📅 Prefiro escolher as datas manualmente (útil no início/fim do mês)';
   document.getElementById('modalRelatorio').style.display = 'flex';
 }
 
@@ -1928,20 +1967,36 @@ function atualizarSemanasModal(){
 function gerarRelatorioPDF(){
   const mes    = document.getElementById('modalMes').value;
   const semana = document.getElementById('modalSemana').value;
+  const usandoDatas = document.getElementById('modalDatasWrap').style.display !== 'none';
   if(!mes){ alert('Selecione o mês!'); return; }
 
   const [ano, mesNum] = mes.split('-');
   const mesNome = MONTH_NAMES_PT[parseInt(mesNum)-1] + ' de ' + ano;
 
   // Filtrar linhas
-  let rows = allFinishedRows.filter(r => {
-    const d = r['DATA'];
-    if(!(d instanceof Date)||isNaN(d)) return false;
-    const m = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
-    return m === mes;
-  });
-  if(semana){
-    rows = rows.filter(r => Math.ceil(r['DATA'].getDate()/7) === parseInt(semana));
+  let rows;
+  if(usandoDatas){
+    const dataInicioStr = document.getElementById('modalDataInicio').value;
+    const dataFimStr = document.getElementById('modalDataFim').value;
+    if(!dataInicioStr || !dataFimStr){ alert('Escolha as duas datas (De e Até)!'); return; }
+    const dataInicio = new Date(dataInicioStr + 'T00:00:00');
+    const dataFim = new Date(dataFimStr + 'T23:59:59');
+    if(dataInicio > dataFim){ alert('A data "De" precisa ser antes da data "Até"!'); return; }
+    rows = allFinishedRows.filter(r => {
+      const d = r['DATA'];
+      if(!(d instanceof Date)||isNaN(d)) return false;
+      return d >= dataInicio && d <= dataFim;
+    });
+  } else {
+    rows = allFinishedRows.filter(r => {
+      const d = r['DATA'];
+      if(!(d instanceof Date)||isNaN(d)) return false;
+      const m = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+      return m === mes;
+    });
+    if(semana){
+      rows = rows.filter(r => Math.ceil(r['DATA'].getDate()/7) === parseInt(semana));
+    }
   }
 
   if(!rows.length){ alert('Nenhum dado encontrado para esse período!'); return; }
@@ -1963,7 +2018,9 @@ function gerarRelatorioPDF(){
   const datas = rows.map(r=>r['DATA']).sort((a,b)=>a-b);
   const dtIni = datas[0].toLocaleDateString('pt-BR');
   const dtFim = datas[datas.length-1].toLocaleDateString('pt-BR');
-  const titulo_periodo = semana ? `Semana ${semana} — ${mesNome}` : `Mês completo — ${mesNome}`;
+  const titulo_periodo = usandoDatas
+    ? `${dtIni} a ${dtFim} — ${mesNome}`
+    : (semana ? `Semana ${semana} — ${mesNome}` : `Mês completo — ${mesNome}`);
 
   // ── GERAR PDF ──
   const { jsPDF } = window.jspdf;
