@@ -2375,18 +2375,34 @@ function computeProductPadroes(){
 }
 
 function computeParadaPareto(rows){
-  // Agrupa por texto da coluna OBS (motivo da parada), somando o tempo de TEMPO_PARADO
-  const acc = {};
+  // Passo 1: agrupa por (motivo + data), pra identificar quando é UM MESMO evento
+  // que afetou vários reatores ao mesmo tempo (ex: falta de energia geral)
+  const eventos = {};
   rows.forEach(r => {
     const obsTxt = (r['OBS']||'').toString().trim();
     const paradaMins = parseMinutesOEE(r['TEMPO_PARADO']);
     if(!obsTxt || paradaMins <= 0) return;
-    const key = obsTxt.toLowerCase();
-    if(!acc[key]) acc[key] = { label: obsTxt, mins: 0, count: 0, reatores: new Set() };
-    acc[key].mins += paradaMins;
-    acc[key].count += 1;
+    const dataRaw = r['DATA'];
+    const dataKey = dataRaw ? new Date(dataRaw).toISOString().slice(0,10) : 'sem-data-'+Math.random();
+    const motivoKey = obsTxt.toLowerCase();
+    const chave = motivoKey + '|' + dataKey;
+    if(!eventos[chave]) eventos[chave] = { label: obsTxt, mins: 0, reatores: new Set() };
+    // Usa o MAIOR tempo entre os reatores afetados nesse mesmo evento, em vez de somar —
+    // um mesmo problema (ex: falta de energia) não deve ser contado 2x só porque afetou 2 reatores
+    eventos[chave].mins = Math.max(eventos[chave].mins, paradaMins);
     const rNum = Number(r['REATOR']);
-    if(rNum >= 1 && rNum <= 4) acc[key].reatores.add(rNum);
+    if(rNum >= 1 && rNum <= 4) eventos[chave].reatores.add(rNum);
+  });
+
+  // Passo 2: agora agrupa os eventos (já sem duplicidade) por motivo —
+  // eventos do mesmo motivo em datas diferentes continuam se somando normalmente
+  const acc = {};
+  Object.values(eventos).forEach(evento => {
+    const key = evento.label.toLowerCase();
+    if(!acc[key]) acc[key] = { label: evento.label, mins: 0, count: 0, reatores: new Set() };
+    acc[key].mins += evento.mins;
+    acc[key].count += 1;
+    evento.reatores.forEach(rn => acc[key].reatores.add(rn));
   });
   return Object.values(acc).sort((a,b) => b.mins - a.mins);
 }
