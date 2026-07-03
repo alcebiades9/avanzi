@@ -2709,22 +2709,50 @@ function renderTimeline(){
     mesLabel = MONTH_NAMES[mo-1] + ' ' + y;
   }
 
-  // Indexa por reator+dia, priorizando o status mais "urgente" se tiver mais de um lote no mesmo dia
+  // Indexa por reator+dia, priorizando o status mais "urgente" se tiver mais de um lote no mesmo dia.
+  // Um lote não ocupa só o dia da coluna DATA — ele "estica" pelos dias que realmente levou
+  // (usando Tempo_Total quando já finalizou), e se ainda tá EM ANDAMENTO/PARADO!, continua
+  // marcando até hoje, já que ainda não terminou.
+  const hoje = new Date();
+  hoje.setHours(0,0,0,0);
+  const rangeInicio = diasDoMes[0];
+  const rangeFim = diasDoMes[diasDoMes.length-1];
+
   const porCelula = {};
   withReactor.forEach(r => {
-    const dt = new Date(r['DATA']);
-    if(isNaN(dt)) return;
+    const dtInicio = new Date(r['DATA']);
+    if(isNaN(dtInicio)) return;
+    dtInicio.setHours(0,0,0,0);
     const rNum = Number(r['REATOR']);
-    const key = rNum + '|' + dt.toISOString().slice(0,10);
     const st = (r['Status']||'').toString().trim().toUpperCase();
+    const produto = (r['PRODUTO']||'').toString().trim();
+    const qty = Number(r['Quantidade_Produzida_kg'])||0;
+    const obs = (r['OBS']||'').toString().trim();
+
+    let dtFim;
+    if(st === 'FINALIZADO'){
+      const totalMins = parseMinutesOEE(r['Tempo_Total']);
+      const diasOcupados = totalMins > 0 ? Math.max(0, Math.ceil(totalMins/60/24) - 1) : 0;
+      dtFim = new Date(dtInicio);
+      dtFim.setDate(dtFim.getDate() + diasOcupados);
+    } else if(st === 'EM ANDAMENTO' || st === 'PARADO!'){
+      // Ainda não terminou: continua ocupando até hoje
+      dtFim = hoje > dtInicio ? new Date(hoje) : new Date(dtInicio);
+    } else {
+      dtFim = new Date(dtInicio);
+    }
+
+    // Limita ao intervalo visível na tela, pra não ficar percorrendo dias fora do calendário mostrado
+    const inicioClip = dtInicio < rangeInicio ? rangeInicio : dtInicio;
+    const fimClip = dtFim > rangeFim ? rangeFim : dtFim;
+    if(inicioClip > fimClip) return;
+
     const prioridade = st === 'PARADO!' ? 3 : st === 'EM ANDAMENTO' ? 2 : st === 'FINALIZADO' ? 1 : 0;
-    if(!porCelula[key] || prioridade > porCelula[key].prioridade){
-      porCelula[key] = {
-        prioridade, status: st,
-        produto: (r['PRODUTO']||'').toString().trim(),
-        qty: Number(r['Quantidade_Produzida_kg'])||0,
-        obs: (r['OBS']||'').toString().trim()
-      };
+    for(let d = new Date(inicioClip); d <= fimClip; d.setDate(d.getDate()+1)){
+      const key = rNum + '|' + d.toISOString().slice(0,10);
+      if(!porCelula[key] || prioridade > porCelula[key].prioridade){
+        porCelula[key] = { prioridade, status: st, produto, qty, obs };
+      }
     }
   });
 
