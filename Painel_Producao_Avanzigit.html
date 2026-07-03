@@ -565,6 +565,9 @@
           <h3>Status de matéria-prima</h3>
           <span class="note">Calculado automaticamente com base no Plano da Semana</span>
         </div>
+        <p style="color:var(--ink-faint);font-size:12px;margin:-8px 0 16px;max-width:640px;line-height:1.5;">
+          <b>Cobertura</b>: quantos dias essa matéria-prima ainda dura, no ritmo de consumo do plano dessa semana (estoque atual ÷ consumo médio por dia). 🔴 até 7 dias · 🟠 8-15 dias · 🟢 16+ dias.
+        </p>
         <div id="mpSummary" class="mp-summary"></div>
         <table class="mp-table">
           <thead><tr>
@@ -572,6 +575,7 @@
             <th>Precisa (kg)</th>
             <th>Estoque atual (kg)</th>
             <th>Saldo (kg)</th>
+            <th>Cobertura</th>
             <th>Status</th>
           </tr></thead>
           <tbody id="mpTableBody"></tbody>
@@ -1291,9 +1295,9 @@ function renderMateriasPrimas(mrpSheet, allRows){
     if(rows[i] && rows[i][0] === 'PRODUTO'){ planHeaderIdx = i; break; }
   }
   const remaining = {}; // produto_lower → qty restante
+  const totalPlanned = {}; // produto_lower → qty total planejada na semana (usado pra cobertura em dias)
   if(planHeaderIdx !== -1){
     // Primeiro acumula o total planejado por produto
-    const totalPlanned = {};
     for(let i=planHeaderIdx+1;i<rows.length;i++){
       const r = rows[i];
       if(!r||!r[0]) break;
@@ -1341,6 +1345,28 @@ function renderMateriasPrimas(mrpSheet, allRows){
     }
   }
 
+  // 5b. Calcula o consumo semanal "cheio" de cada MP (usa o TOTAL planejado da semana, não só o
+  // que resta) — isso dá uma taxa de consumo mais estável pra calcular a Cobertura em Dias,
+  // já que "precisaCalc" vai encolhendo conforme os lotes finalizam ao longo da semana.
+  const consumoSemanalCalc = {};
+  if(recipeHeaderIdx !== -1){
+    const mpCols = rows[recipeHeaderIdx];
+    for(let i=recipeHeaderIdx+1;i<rows.length;i++){
+      const r = rows[i];
+      if(!r||!r[0]) break;
+      const prodNome = r[0].toString().trim().toLowerCase();
+      const totalSemana = totalPlanned[prodNome] || 0;
+      if(totalSemana <= 0) continue;
+      for(let c=1;c<mpCols.length;c++){
+        const mpNome = (mpCols[c]||'').toString().trim().toLowerCase();
+        if(!mpNome) continue;
+        const prop = Number(r[c])||0;
+        if(prop <= 0) continue;
+        consumoSemanalCalc[mpNome] = (consumoSemanalCalc[mpNome]||0) + prop * totalSemana;
+      }
+    }
+  }
+
   // 6. Build items using calculated PRECISA
   const items = [];
   for(let i=headerIdx+1; i<rows.length; i++){
@@ -1361,12 +1387,19 @@ function renderMateriasPrimas(mrpSheet, allRows){
     else if(saldo >= minStock) status = 'OK - TEM ESTOQUE';
     else if(podeProdzir && saldo >= 0) status = 'PRODUZIR!';
     else status = 'COMPRAR!';
+
+    // Cobertura em dias: estoque atual ÷ consumo médio diário (consumo semanal ÷ 7)
+    const consumoSemanal = consumoSemanalCalc[nomeLow] || 0;
+    const consumoDiario = consumoSemanal / 7;
+    const coberturaDias = (estoque !== null && consumoDiario > 0) ? estoque / consumoDiario : null;
+
     items.push({
       nome,
       precisa: precisaJS,
       estoque,
       saldo,
-      status
+      status,
+      coberturaDias
     });
   }
 
@@ -1389,11 +1422,20 @@ function renderMateriasPrimas(mrpSheet, allRows){
     if(item.status.includes('COMPRAR')) statusClass = 'status-comprar';
     else if(item.status.includes('PRODUZIR')) statusClass = 'status-produzir';
     else if(item.status.includes('VERIFICAR')) statusClass = 'status-verificar';
+    let coberturaCell;
+    if(item.coberturaDias === null){
+      coberturaCell = '<td style="color:var(--ink-faint);">sem consumo previsto</td>';
+    } else {
+      const dias = Math.round(item.coberturaDias);
+      const cor = dias <= 7 ? 'var(--warn)' : dias <= 15 ? 'var(--accent)' : 'var(--ok)';
+      coberturaCell = `<td style="color:${cor};font-weight:600;">${dias} ${dias===1?'dia':'dias'}</td>`;
+    }
     return `<tr>
       <td>${item.nome}</td>
       <td>${item.precisa > 0 ? item.precisa.toLocaleString('pt-BR') : '—'}</td>
       ${estoqueCell}
       ${saldoCell}
+      ${coberturaCell}
       <td class="${statusClass}">${item.status}</td>
     </tr>`;
   }).join('');
