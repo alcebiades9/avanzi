@@ -2719,7 +2719,7 @@ function renderTimeline(){
   const rangeFim = diasDoMes[diasDoMes.length-1];
 
   const porCelula = {};
-  withReactor.forEach(r => {
+  withReactor.forEach((r, loteId) => {
     const dtInicio = new Date(r['DATA']);
     if(isNaN(dtInicio)) return;
     dtInicio.setHours(0,0,0,0);
@@ -2751,7 +2751,7 @@ function renderTimeline(){
     for(let d = new Date(inicioClip); d <= fimClip; d.setDate(d.getDate()+1)){
       const key = rNum + '|' + d.toISOString().slice(0,10);
       if(!porCelula[key] || prioridade > porCelula[key].prioridade){
-        porCelula[key] = { prioridade, status: st, produto, qty, obs };
+        porCelula[key] = { prioridade, status: st, produto, qty, obs, loteId };
       }
     }
   });
@@ -2777,16 +2777,26 @@ function renderTimeline(){
   html += `</div>`;
 
   for(let rNum=1; rNum<=4; rNum++){
+    const celulas = diasDoMes.map(d => porCelula[rNum + '|' + d.toISOString().slice(0,10)] || null);
     html += `<div style="display:flex;align-items:center;margin-top:2px;">`;
     html += `<div style="width:${labelWidth}px;flex-shrink:0;font-size:12px;font-weight:600;">${REACTOR_NAMES[rNum]||'Reator '+rNum}</div>`;
-    diasDoMes.forEach(d => {
-      const key = rNum + '|' + d.toISOString().slice(0,10);
-      const info = porCelula[key];
+    celulas.forEach((info, i) => {
+      const d = diasDoMes[i];
       const cor = corPorStatus(info ? info.status : '');
       const tooltip = info
         ? `${d.toLocaleDateString('pt-BR')}: ${info.produto} (${info.qty}kg) - ${info.status}${info.obs ? ' - '+info.obs : ''}`
         : `${d.toLocaleDateString('pt-BR')}: sem produção`;
-      html += `<div title="${escapeAttr(tooltip)}" style="width:${cellSize-2}px;height:${cellSize-2}px;margin:1px;background:${cor};border-radius:4px;flex-shrink:0;cursor:${info?'help':'default'};"></div>`;
+      // Se o dia anterior/seguinte é o MESMO lote, gruda sem espaço/borda no meio,
+      // formando uma barra única — assim fica claro que é 1 lote de vários dias, não vários lotes
+      const prev = celulas[i-1];
+      const next = celulas[i+1];
+      const coladoPrev = info && prev && prev.loteId === info.loteId;
+      const coladoNext = info && next && next.loteId === info.loteId;
+      const mLeft = coladoPrev ? '0px' : '1px';
+      const mRight = coladoNext ? '0px' : '1px';
+      const rLeft = coladoPrev ? '0px' : '4px';
+      const rRight = coladoNext ? '0px' : '4px';
+      html += `<div title="${escapeAttr(tooltip)}" style="width:${cellSize-2}px;height:${cellSize-2}px;margin:1px ${mRight} 1px ${mLeft};background:${cor};border-radius:${rLeft} ${rRight} ${rRight} ${rLeft};flex-shrink:0;cursor:${info?'help':'default'};"></div>`;
     });
     html += `</div>`;
   }
