@@ -470,6 +470,7 @@
       <button class="tab-btn" data-tab="materiaprima">Matéria-prima</button>
       <button class="tab-btn" data-tab="media">Média mensal</button>
       <button class="tab-btn" data-tab="oee">OEE</button>
+      <button class="tab-btn" data-tab="timeline">Linha do Tempo</button>
     </div>
 
     <div class="tab-panel active" id="tab-producao">
@@ -610,6 +611,25 @@
       </div>
     </div><!-- /tab-panel oee -->
 
+    <div class="tab-panel" id="tab-timeline">
+      <div class="section">
+        <div class="section-head">
+          <h3>Linha do Tempo dos Reatores</h3>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <select id="timelineMonthFilter" style="padding:6px 12px;border:1px solid var(--select-border);border-radius:6px;background:var(--select-bg);color:var(--ink);font-size:13px;cursor:pointer;">
+              <option value="all">Todos os meses</option>
+            </select>
+          </div>
+        </div>
+        <p style="color:var(--ink-faint);font-size:12px;margin:0 0 20px;max-width:640px;line-height:1.5;">
+          Cada linha é um reator. Cada bloco colorido é um lote — passe o mouse pra ver detalhes. Espaço em branco = reator ocioso naquele dia.
+        </p>
+        <div id="timelineContent" style="display:flex;flex-direction:column;gap:16px;overflow-x:auto;">
+          <p style="color:var(--ink-faint);font-size:14px;">Nenhum dado com REATOR preenchido encontrado.</p>
+        </div>
+      </div>
+    </div><!-- /tab-panel timeline -->
+
   </div>
 
   <!-- MODAL RELATÓRIO GERENCIAL -->
@@ -746,6 +766,7 @@ async function loadFromDrive(){
     dashboard.style.display = 'block';
     document.getElementById('lastUpdate').textContent = new Date().toLocaleString('pt-BR');
     renderOEE();
+    renderTimeline();
   }catch(err){
     console.error(err);
     showError('Não consegui carregar do Google Drive. Verifique se o arquivo está compartilhado como "Qualquer pessoa com o link pode ver". Erro: ' + err.message);
@@ -761,7 +782,8 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
     const shared = document.getElementById('sharedSections');
-    if(shared) shared.style.display = (btn.dataset.tab === 'media' || btn.dataset.tab === 'oee') ? 'none' : 'block';
+    if(shared) shared.style.display = (btn.dataset.tab === 'media' || btn.dataset.tab === 'oee' || btn.dataset.tab === 'timeline') ? 'none' : 'block';
+    if(btn.dataset.tab === 'timeline') renderTimeline();
   });
 });
 
@@ -2532,6 +2554,226 @@ function renderMTBFMTTR(rows){
   </div>`;
 }
 
+function computeGeralOEEForRows(rows, padroes){
+  // Mesma lógica de cálculo do OEE geral, só que reutilizável pra qualquer conjunto de linhas
+  // (usado pelo gráfico de evolução mensal, calculando mês a mês)
+  const reactors = {};
+  rows.forEach(r => {
+    const rNum = Number(r['REATOR']);
+    if(!(rNum >= 1 && rNum <= 4)) return;
+    if(!reactors[rNum]) reactors[rNum] = { finalizado:[], parado:[] };
+    const st = (r['Status']||'').toString().trim().toUpperCase();
+    const mins = parseMinutesOEE(r['Tempo_Total']);
+    const kg = Number(r['Quantidade_Produzida_kg']) || 0;
+    const produto = (r['PRODUTO']||'').toString().trim();
+    const qual = (r['QUALIDADE']||'').toString().trim().toLowerCase();
+    const paradoMinsVal = parseMinutesOEE(r['TEMPO_PARADO']);
+    if(st === 'FINALIZADO'){
+      reactors[rNum].finalizado.push({ mins, kg, produto, conforme: qual === 'conforme' });
+    }
+    if(paradoMinsVal > 0){
+      reactors[rNum].parado.push({ mins: paradoMinsVal });
+    }
+  });
+
+  const results = [];
+  for(const [rNum, data] of Object.entries(reactors)){
+    const prodMins = data.finalizado.reduce((s,r)=>s+r.mins,0);
+    const paradoMins = data.parado.reduce((s,r)=>s+r.mins,0);
+    const totalMins = prodMins + paradoMins;
+    const disponibilidade = totalMins > 0 ? (prodMins / totalMins) * 100 : 100;
+    const totalFin = data.finalizado.length;
+    const conformes = data.finalizado.filter(r=>r.conforme).length;
+    const qualidade = totalFin > 0 ? (conformes / totalFin) * 100 : 100;
+    const lotesComPadrao = data.finalizado.filter(l => l.mins > 0 && l.kg > 0 && padroes[l.produto] !== undefined);
+    const minRealPerf = lotesComPadrao.reduce((s,l) => s + l.mins, 0);
+    const minPadraoPerf = lotesComPadrao.reduce((s,l) => s + padroes[l.produto] * l.kg, 0);
+    const performance = minRealPerf > 0 ? (minPadraoPerf / minRealPerf) * 100 : 100;
+    const oee = (disponibilidade * performance * qualidade) / 10000;
+    results.push({ oee, lotes: totalFin });
+  }
+  if(!results.length) return null;
+  const n = results.length;
+  const geralOee = results.reduce((s,r)=>s+r.oee,0)/n;
+  const totalLotes = results.reduce((s,r)=>s+r.lotes,0);
+  return { geralOee, totalLotes };
+}
+
+function renderOEEChart(withReactor, sortedMonths, padroes){
+  if(sortedMonths.length < 2) return ''; // sem pelo menos 2 meses, não dá pra mostrar tendência
+
+  const pontos = sortedMonths.map(m => {
+    const rowsDoMes = withReactor.filter(r => {
+      const d = r['DATA'];
+      if(!d) return false;
+      const dt = new Date(d);
+      return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0') === m;
+    });
+    const resultado = computeGeralOEEForRows(rowsDoMes, padroes);
+    const [y, mo] = m.split('-');
+    const label = MONTH_NAMES[parseInt(mo)-1].slice(0,3) + '/' + y.slice(2);
+    return { label, oee: resultado ? resultado.geralOee : null, lotes: resultado ? resultado.totalLotes : 0 };
+  }).filter(p => p.oee !== null && p.lotes > 0);
+
+  if(pontos.length < 2) return '';
+
+  const w = 640, h = 200, padding = 40;
+  const maxOee = Math.max(120, ...pontos.map(p=>p.oee));
+  const minOee = Math.min(0, ...pontos.map(p=>p.oee));
+  const range = (maxOee - minOee) || 1;
+  const stepX = (w - padding*2) / (pontos.length - 1);
+
+  const pathPoints = pontos.map((p,i) => {
+    const x = padding + i*stepX;
+    const y = h - padding - ((p.oee - minOee)/range)*(h - padding*2);
+    return { x, y, p };
+  });
+
+  const pathD = pathPoints.map((pt,i) => (i===0?'M':'L')+pt.x.toFixed(1)+','+pt.y.toFixed(1)).join(' ');
+
+  const pontosHtml = pathPoints.map(pt => `
+    <circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="4" fill="${getOeeColor(pt.p.oee)}" />
+    <text x="${pt.x.toFixed(1)}" y="${(pt.y-10).toFixed(1)}" font-size="11" fill="var(--ink)" text-anchor="middle" font-family="'IBM Plex Mono'">${Math.round(pt.p.oee)}%</text>
+    <text x="${pt.x.toFixed(1)}" y="${(h-padding+18).toFixed(1)}" font-size="11" fill="var(--ink-faint)" text-anchor="middle">${escapeAttr(pt.p.label)}</text>
+  `).join('');
+
+  const yMeta = (h - padding - ((85 - minOee)/range)*(h - padding*2));
+  const linhaMeta = `<line x1="${padding}" y1="${yMeta.toFixed(1)}" x2="${w-padding}" y2="${yMeta.toFixed(1)}" stroke="var(--ok)" stroke-width="1" stroke-dasharray="4,4" opacity="0.4"/>
+    <text x="${w-padding}" y="${(yMeta-4).toFixed(1)}" font-size="10" fill="var(--ok)" text-anchor="end" opacity="0.7">meta 85%</text>`;
+
+  return `<div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:24px;margin-top:24px;">
+    <h4 style="margin:0 0 4px;font-size:16px;">Evolução do OEE por mês</h4>
+    <p style="color:var(--ink-faint);font-size:12px;margin:0 0 16px;">OEE geral da fábrica em cada mês, pra ver se está melhorando ou piorando com o tempo.</p>
+    <svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;max-width:${w}px;">
+      ${linhaMeta}
+      <path d="${pathD}" fill="none" stroke="var(--accent)" stroke-width="2"/>
+      ${pontosHtml}
+    </svg>
+  </div>`;
+}
+
+function renderTimeline(){
+  const container = document.getElementById('timelineContent');
+  const monthSelect = document.getElementById('timelineMonthFilter');
+  if(!container || !monthSelect) return;
+
+  const withReactor = allProductionRows.filter(r => {
+    const rNum = Number(r['REATOR']);
+    return rNum >= 1 && rNum <= 4 && r['DATA'];
+  });
+
+  if(!withReactor.length){
+    container.innerHTML = '<p style="color:var(--ink-faint);font-size:14px;">Nenhum dado com REATOR preenchido encontrado.</p>';
+    return;
+  }
+
+  const months = new Set();
+  withReactor.forEach(r => {
+    const dt = new Date(r['DATA']);
+    if(!isNaN(dt)) months.add(dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0'));
+  });
+  const sortedMonths = [...months].sort();
+
+  const prevVal = monthSelect.value;
+  monthSelect.innerHTML = '<option value="all">Todos os meses</option>';
+  sortedMonths.forEach(m => {
+    const [y, mo] = m.split('-');
+    const label = MONTH_NAMES[parseInt(mo)-1] + ' ' + y;
+    monthSelect.innerHTML += `<option value="${m}">${label}</option>`;
+  });
+  // Por padrão mostra o mês mais recente (não "todos"), pra não ficar gigante de largura
+  if(prevVal && monthSelect.querySelector(`option[value="${prevVal}"]`)){
+    monthSelect.value = prevVal;
+  } else if(sortedMonths.length){
+    monthSelect.value = sortedMonths[sortedMonths.length-1];
+  }
+
+  const selMonth = monthSelect.value;
+  let diasDoMes, mesLabel;
+  if(selMonth === 'all'){
+    const hoje = new Date();
+    diasDoMes = [];
+    for(let i=59; i>=0; i--){
+      const d = new Date(hoje);
+      d.setDate(d.getDate()-i);
+      diasDoMes.push(d);
+    }
+    mesLabel = 'Últimos 60 dias';
+  } else {
+    const [y, mo] = selMonth.split('-').map(Number);
+    const numDias = new Date(y, mo, 0).getDate();
+    diasDoMes = [];
+    for(let d=1; d<=numDias; d++){
+      diasDoMes.push(new Date(y, mo-1, d));
+    }
+    mesLabel = MONTH_NAMES[mo-1] + ' ' + y;
+  }
+
+  // Indexa por reator+dia, priorizando o status mais "urgente" se tiver mais de um lote no mesmo dia
+  const porCelula = {};
+  withReactor.forEach(r => {
+    const dt = new Date(r['DATA']);
+    if(isNaN(dt)) return;
+    const rNum = Number(r['REATOR']);
+    const key = rNum + '|' + dt.toISOString().slice(0,10);
+    const st = (r['Status']||'').toString().trim().toUpperCase();
+    const prioridade = st === 'PARADO!' ? 3 : st === 'EM ANDAMENTO' ? 2 : st === 'FINALIZADO' ? 1 : 0;
+    if(!porCelula[key] || prioridade > porCelula[key].prioridade){
+      porCelula[key] = {
+        prioridade, status: st,
+        produto: (r['PRODUTO']||'').toString().trim(),
+        qty: Number(r['Quantidade_Produzida_kg'])||0,
+        obs: (r['OBS']||'').toString().trim()
+      };
+    }
+  });
+
+  const corPorStatus = (st) => {
+    if(st === 'PARADO!') return 'var(--purple)';
+    if(st === 'EM ANDAMENTO') return 'var(--dot-andamento)';
+    if(st === 'FINALIZADO') return 'var(--dot-ok)';
+    return 'var(--gauge-track)';
+  };
+
+  const cellSize = 26;
+  const labelWidth = 130;
+
+  let html = `<div style="font-size:13px;font-weight:600;">${mesLabel}</div>`;
+  html += `<div style="min-width:${labelWidth + diasDoMes.length*cellSize}px;">`;
+
+  html += `<div style="display:flex;">`;
+  html += `<div style="width:${labelWidth}px;flex-shrink:0;"></div>`;
+  diasDoMes.forEach(d => {
+    html += `<div style="width:${cellSize}px;flex-shrink:0;text-align:center;font-size:9px;color:var(--ink-faint);">${d.getDate()}</div>`;
+  });
+  html += `</div>`;
+
+  for(let rNum=1; rNum<=4; rNum++){
+    html += `<div style="display:flex;align-items:center;margin-top:2px;">`;
+    html += `<div style="width:${labelWidth}px;flex-shrink:0;font-size:12px;font-weight:600;">${REACTOR_NAMES[rNum]||'Reator '+rNum}</div>`;
+    diasDoMes.forEach(d => {
+      const key = rNum + '|' + d.toISOString().slice(0,10);
+      const info = porCelula[key];
+      const cor = corPorStatus(info ? info.status : '');
+      const tooltip = info
+        ? `${d.toLocaleDateString('pt-BR')}: ${info.produto} (${info.qty}kg) - ${info.status}${info.obs ? ' - '+info.obs : ''}`
+        : `${d.toLocaleDateString('pt-BR')}: sem produção`;
+      html += `<div title="${escapeAttr(tooltip)}" style="width:${cellSize-2}px;height:${cellSize-2}px;margin:1px;background:${cor};border-radius:4px;flex-shrink:0;cursor:${info?'help':'default'};"></div>`;
+    });
+    html += `</div>`;
+  }
+  html += `</div>`;
+
+  html += `<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--ink-soft);margin-top:12px;">
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--dot-ok);margin-right:4px;"></span>Finalizado</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--dot-andamento);margin-right:4px;"></span>Em andamento</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--purple);margin-right:4px;"></span>Parado</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--gauge-track);margin-right:4px;"></span>Ocioso</span>
+  </div>`;
+
+  container.innerHTML = html;
+}
+
 function renderOEE(){
   const container = document.getElementById('oeeContent');
   const monthSelect = document.getElementById('oeeMonthFilter');
@@ -2674,11 +2916,13 @@ function renderOEE(){
 
   html += renderParadaPareto(filtered);
   html += renderMTBFMTTR(filtered);
+  html += renderOEEChart(withReactor, sortedMonths, padroes);
 
   container.innerHTML = html;
 }
 
 document.getElementById('oeeMonthFilter')?.addEventListener('change', () => renderOEE());
+document.getElementById('timelineMonthFilter')?.addEventListener('change', () => renderTimeline());
 
 </script>
 </body>
