@@ -351,6 +351,8 @@
     .mp-table td:nth-child(2){ display:none; }
     .mp-table th:nth-child(3),
     .mp-table td:nth-child(3){ display:none; }
+    .mp-table th:nth-child(4),
+    .mp-table td:nth-child(4){ display:none; }
     .mp-table{ font-size:12px; }
     .mp-table td:first-child{ font-size:12px; }
     .mp-table td{ padding:7px 6px; }
@@ -1436,7 +1438,7 @@ function renderMateriasPrimas(mrpSheet, allRows){
     else if(item.status.includes('VERIFICAR')) statusClass = 'status-verificar';
     let coberturaCell;
     if(item.coberturaDias === null){
-      coberturaCell = '<td style="color:var(--ink-faint);">sem consumo previsto</td>';
+      coberturaCell = '<td style="color:var(--ink-faint);white-space:nowrap;">sem consumo</td>';
     } else {
       const dias = Math.round(item.coberturaDias);
       const cor = dias <= 7 ? 'var(--warn)' : dias <= 15 ? 'var(--accent)' : 'var(--ok)';
