@@ -6,13 +6,18 @@ Sistema de Planejamento e Controle da Produção (PCP) desenvolvido para acompan
 
 ## 📊 Funcionalidades
 
-- **Produção em tempo real** — status de cada reator (Em andamento, Finalizado, Planejado)
+- **Produção em tempo real** — status de cada reator (Em andamento, Finalizado, Planejado, **Parado**)
 - **Capacidade dos reatores (CRP)** — horas necessárias vs capacidade disponível, atualizado conforme produtos são finalizados
 - **Plano da semana (MRP)** — produtos planejados com status de execução e cálculo automático de matéria-prima
-- **Status de matéria-prima** — calcula automaticamente quanto de cada MP ainda será necessário com base no que falta produzir (COMPRAR / PRODUZIR / OK)
+- **Status de matéria-prima** — calcula automaticamente quanto de cada MP ainda será necessário com base no que falta produzir (COMPRAR / PRODUZIR / OK), com **Cobertura de Estoque em Dias**
 - **Média mensal por produto** — histórico de produção desde o início dos registros
 - **Gráfico de evolução mensal** — tendência de volume produzido com filtro por mês e por semana
-- **OEE (Eficiência Global dos Reatores)** — indicador de Disponibilidade × Qualidade por reator, com filtro por mês e OEE geral da fábrica
+- **OEE (Eficiência Global dos Reatores)** — Disponibilidade × Performance × Qualidade por reator, com filtro por mês e OEE geral da fábrica
+- **Pareto de Paradas** — ranking dos motivos que mais tiram tempo de produção, sem contar em dobro eventos simultâneos entre reatores
+- **MTBF / MTTR** — tempo médio entre falhas e tempo médio de reparo, por reator
+- **Evolução do OEE por mês** — gráfico de linha mostrando a tendência de eficiência ao longo do tempo
+- **Linha do Tempo dos Reatores** — calendário visual mostrando o que cada reator produziu dia a dia, com barras contínuas por lote
+- **Ficha do Lote** — busca por Número da OS ou nome do produto, mostra todos os dados daquele lote específico e permite imprimir/exportar em PDF
 - **Histórico completo** — mais de 1 ano de registros de produção disponíveis para consulta
 - **Relatório Semanal em PDF** — gerado diretamente pelo painel com um clique, escolhendo mês e semana
 - **Relatório Gerencial em PDF** — resumo mensal com produtividade, comparativo, qualidade e ranking de produtos
@@ -22,6 +27,7 @@ Sistema de Planejamento e Controle da Produção (PCP) desenvolvido para acompan
 - **Menu lateral** — acesso rápido a relatórios, planta de produção, documentação e modo escuro
 - **Rastreamento de acessos** — Google Analytics integrado para monitorar uso do painel
 - **Atualização automática** — recarrega os dados a cada 3 minutos
+- **Layout responsivo** — testado e ajustado para uso confortável no celular
 
 ---
 
@@ -54,13 +60,26 @@ Painel HTML (GitHub Pages)
 
 ---
 
+## 📑 Abas do painel
+
+| Aba | Conteúdo |
+|---|---|
+| **Produção** | KPIs gerais, plano da semana e capacidade dos reatores |
+| **Matéria-prima** | Status de MP com Cobertura de Estoque em Dias |
+| **Média mensal** | Histórico e gráfico de evolução por produto |
+| **OEE** | Disponibilidade, Performance, Qualidade, Pareto de Paradas, MTBF/MTTR e evolução mensal |
+| **Linha do Tempo** | Calendário visual da ocupação de cada reator, dia a dia |
+| **Ficha do Lote** | Busca e consulta individual de qualquer lote (por OS ou produto) |
+
+---
+
 ## 📋 Abas da planilha
 
 | Aba | Função |
 |---|---|
-| `Registro_Produção` | Registro de todos os lotes produzidos com status, qualidade, tempo de produção, tempo parado, reator e número de OS |
+| `Registro_Produção` | Registro de todos os lotes produzidos com status, qualidade, tempo de produção, tempo parado, motivo da parada (OBS), reator e número de OS |
 | `MRP` | Plano semanal, receitas dos produtos e cálculo de necessidade de matéria-prima |
-| `CRP` | Capacidade dos reatores por produto e horas previstas na semana |
+| `CRP` | Capacidade dos reatores por produto, horas previstas na semana e OEE (Disponibilidade × Performance × Qualidade) por reator |
 | `Média` | Histórico de média mensal por produto |
 | `RESUMO_MP` | Estoque total de matéria-prima consolidado |
 | `HISTORICO_ALERTAS` | Registro de alertas de MP com datas de pedido, chegada, tempo de reposição e impacto na produção |
@@ -70,16 +89,50 @@ Painel HTML (GitHub Pages)
 
 ## 📈 OEE — Eficiência Global dos Reatores
 
-O painel possui a aba **OEE** que calcula automaticamente a eficiência de cada reator:
+O painel calcula automaticamente a eficiência de cada reator com as 3 dimensões clássicas do OEE:
 
-- **Disponibilidade** — tempo produzindo vs tempo parado (usa colunas Tempo_Total e TEMPO_PARADO)
+- **Disponibilidade** — tempo produzindo vs tempo parado (usa colunas Tempo_Total e TEMPO_PARADO, contando também paradas resolvidas em lotes já finalizados ou parados no momento)
+- **Performance** — compara a velocidade real de cada lote (min/kg) com a média histórica do produto — acima de 100% é mais rápido que o normal, abaixo é mais lento
 - **Qualidade** — lotes conformes vs total de lotes finalizados
-- **OEE** = Disponibilidade × Qualidade
-- **OEE Geral da Fábrica** — média ponderada de todos os reatores
+- **OEE** = Disponibilidade × Performance × Qualidade
+- **OEE Geral da Fábrica** — média dos 4 reatores
 - **Filtro por mês** — acompanhe a evolução da eficiência ao longo do tempo
 - **Referência**: ≥ 85% Excelente | 60-84% Bom | < 60% Precisa melhorar
 
-A coluna **REATOR** (coluna O) no Registro_Produção identifica qual reator produziu cada lote. A coluna **TEMPO_PARADO** (coluna P) é calculada automaticamente pelo VBA quando o status muda entre PARADO! e EM ANDAMENTO.
+A coluna **REATOR** (coluna O) no Registro_Produção identifica qual reator produziu cada lote. A coluna **TEMPO_PARADO** (coluna P) registra quanto tempo aquele lote ficou parado, e a coluna **OBS** guarda o motivo.
+
+### Pareto de Paradas
+
+Ranking dos motivos de parada (baseado no texto da coluna OBS) que mais tiram tempo de produção, do maior pro menor — segue o Princípio de Pareto (80% do tempo perdido costuma vir de 20% dos motivos). Um mesmo evento que afeta vários reatores ao mesmo tempo (ex: falta de energia geral) é identificado e contado uma única vez, não somado por reator.
+
+### MTBF / MTTR
+
+- **MTBF** (tempo médio entre falhas): de quanto em quanto tempo, em média, cada reator para
+- **MTTR** (tempo médio de reparo): quanto tempo em média leva pra voltar a rodar depois que parou
+
+Precisa de pelo menos 2 paradas registradas no mesmo reator para calcular o MTBF; com menos que isso, aparece "dados insuficientes".
+
+---
+
+## 🗓️ Linha do Tempo dos Reatores
+
+Visualização tipo calendário: cada linha é um reator, cada coluna é um dia do mês selecionado. Lotes que levam mais de 24h aparecem como uma barra contínua ocupando vários dias (não um bloco só no dia de início), e lotes ainda em andamento continuam "crescendo" até o dia atual, já que ainda não têm data de término definida.
+
+Cores: 🟢 Finalizado · 🟠 Em andamento · 🟣 Parado · ⚫ Ocioso (nenhuma produção naquele dia)
+
+---
+
+## 🔍 Ficha do Lote
+
+Busca individual por **Número da OS** (mais preciso) ou **nome do produto** (mostra uma lista de lotes pra escolher). A ficha mostra produto, data, quantidade, reator, tempo de produção, qualidade e, se houve, motivo e duração da parada. Campos que dependem do lote já ter finalizado (tempo total, qualidade) aparecem como "ainda não finalizou" / "ainda não avaliada" quando o lote está em andamento. Tem botão para imprimir ou exportar como PDF.
+
+---
+
+## 📦 Cobertura de Estoque em Dias
+
+Na aba Matéria-prima, cada item mostra quantos dias o estoque atual ainda dura, no ritmo do plano de produção da semana (estoque atual ÷ consumo médio diário). Estoque zerado sempre mostra "0 dias", independente de ter consumo previsto ou não.
+
+Referência: 🔴 até 7 dias · 🟠 8-15 dias · 🟢 16+ dias
 
 ---
 
@@ -164,5 +217,5 @@ Planta baixa técnica da área de produção com:
 
 ## 👤 Desenvolvido por
 
-**Alcebíades Correia** — Assistente Administrativo de Produção  
+**Alcebíades Correia** — Assistente Administrativo de Produção
 Avanzi Química
