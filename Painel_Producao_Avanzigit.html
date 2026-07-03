@@ -2019,7 +2019,7 @@ function gerarRelatorioPDF(){
   const dtIni = datas[0].toLocaleDateString('pt-BR');
   const dtFim = datas[datas.length-1].toLocaleDateString('pt-BR');
   const titulo_periodo = usandoDatas
-    ? `${dtIni} a ${dtFim} — ${mesNome}`
+    ? `${new Date(document.getElementById('modalDataInicio').value+'T00:00:00').toLocaleDateString('pt-BR')} a ${new Date(document.getElementById('modalDataFim').value+'T00:00:00').toLocaleDateString('pt-BR')} — ${mesNome}`
     : (semana ? `Semana ${semana} — ${mesNome}` : `Mês completo — ${mesNome}`);
 
   // ── GERAR PDF ──
@@ -2050,7 +2050,13 @@ function gerarRelatorioPDF(){
 
   doc.setFontSize(10);
   doc.setTextColor(...COR_CINZA);
-  doc.text(`${titulo_periodo}   ·   ${dtIni} a ${dtFim}`, W/2, y, {align:'center'}); y += 5;
+  const dataSelecionadaTxt = usandoDatas
+    ? `${new Date(document.getElementById('modalDataInicio').value+'T00:00:00').toLocaleDateString('pt-BR')} a ${new Date(document.getElementById('modalDataFim').value+'T00:00:00').toLocaleDateString('pt-BR')}`
+    : `${dtIni} a ${dtFim}`;
+  const subtitulo = (usandoDatas && dataSelecionadaTxt !== `${dtIni} a ${dtFim}`)
+    ? `${titulo_periodo}   ·   dados encontrados: ${dtIni} a ${dtFim}`
+    : titulo_periodo;
+  doc.text(subtitulo, W/2, y, {align:'center'}); y += 5;
 
   // Linha laranja
   doc.setDrawColor(...COR_ACENT);
