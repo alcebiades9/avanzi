@@ -2917,11 +2917,13 @@ function buscarFicha(){
   renderFichaLista(porProduto);
 }
 
-function renderFichaLista(rows){
+function renderFichaLista(rows, mostrarAte){
+  mostrarAte = mostrarAte || 50;
   const container = document.getElementById('fichaContent');
   const ordenado = [...rows].sort((a,b) => new Date(b['DATA']) - new Date(a['DATA']));
   window._fichaListaRows = ordenado;
-  const itensHtml = ordenado.slice(0, 50).map((r, i) => {
+  const visiveis = ordenado.slice(0, mostrarAte);
+  const itensHtml = visiveis.map((r, i) => {
     const st = (r['Status']||'').toString().trim().toUpperCase();
     const cor = st === 'PARADO!' ? 'var(--purple)' : st === 'EM ANDAMENTO' ? 'var(--dot-andamento)' : st === 'FINALIZADO' ? 'var(--dot-ok)' : 'var(--ink-faint)';
     const dataFmt = r['DATA'] ? new Date(r['DATA']).toLocaleDateString('pt-BR') : '—';
@@ -2933,10 +2935,18 @@ function renderFichaLista(rows){
       <span style="font-size:11px;font-weight:600;color:${cor};white-space:nowrap;">${st||'—'}</span>
     </div>`;
   }).join('');
-  container.innerHTML = `<p style="font-size:12px;color:var(--ink-faint);margin:0 0 10px;">${rows.length} lote(s) encontrado(s). Clique num deles pra ver a ficha:</p>` + itensHtml;
+  const restantes = ordenado.length - visiveis.length;
+  const contagemTxt = restantes > 0
+    ? `Mostrando os ${visiveis.length} mais recentes de ${ordenado.length} encontrados (do mais novo pro mais antigo).`
+    : `${ordenado.length} lote(s) encontrado(s). Clique num deles pra ver a ficha:`;
+  const btnMais = restantes > 0
+    ? `<button id="fichaCarregarMaisBtn" style="margin-top:6px;padding:8px 16px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--ink);font-size:12px;cursor:pointer;">Carregar mais ${Math.min(50, restantes)} (faltam ${restantes})</button>`
+    : '';
+  container.innerHTML = `<p style="font-size:12px;color:var(--ink-faint);margin:0 0 10px;">${contagemTxt}</p>` + itensHtml + btnMais;
   container.querySelectorAll('.ficha-lista-item').forEach(el => {
     el.addEventListener('click', () => renderFichaCard(window._fichaListaRows[Number(el.dataset.idx)]));
   });
+  document.getElementById('fichaCarregarMaisBtn')?.addEventListener('click', () => renderFichaLista(rows, mostrarAte + 50));
 }
 
 function renderFichaCard(r){
