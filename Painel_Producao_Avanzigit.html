@@ -2456,6 +2456,7 @@ function renderParadaPareto(rows){
       Baseado no <b>Princípio de Pareto</b>: geralmente 80% do tempo perdido vem de só 20% dos motivos — esse ranking mostra qual motivo resolver primeiro pra ter o maior ganho.
     </p>
     <p style="color:var(--ink-faint);font-size:12px;margin:0 0 16px;">Motivos que mais tiraram tempo de produção, do maior pro menor. Total: ${(totalMins/60).toFixed(1)}h de parada no período.</p>
+    <p style="color:var(--ink-faint);font-size:11px;margin:0 0 16px;">${Object.entries(REACTOR_NAMES).map(([n,name]) => `<b>R${n}</b> = ${name}`).join(' &nbsp;·&nbsp; ')}</p>
     ${rowsHtml}
   </div>`;
 }
