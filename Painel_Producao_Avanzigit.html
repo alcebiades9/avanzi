@@ -1391,7 +1391,19 @@ function renderMateriasPrimas(mrpSheet, allRows){
     // Cobertura em dias: estoque atual ÷ consumo médio diário (consumo semanal ÷ 7)
     const consumoSemanal = consumoSemanalCalc[nomeLow] || 0;
     const consumoDiario = consumoSemanal / 7;
-    const coberturaDias = (estoque !== null && consumoDiario > 0) ? estoque / consumoDiario : null;
+    // Se o estoque já é zero, a cobertura é zero dias na hora — não importa se tem
+    // consumo planejado essa semana ou não, porque não tem nada guardado mesmo.
+    // "sem consumo previsto" só faz sentido quando TEM estoque mas nada usa ele essa semana.
+    let coberturaDias;
+    if(estoque === null){
+      coberturaDias = null;
+    } else if(estoque <= 0){
+      coberturaDias = 0;
+    } else if(consumoDiario > 0){
+      coberturaDias = estoque / consumoDiario;
+    } else {
+      coberturaDias = null; // tem estoque, mas nada consome essa semana
+    }
 
     items.push({
       nome,
