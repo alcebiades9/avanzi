@@ -2374,6 +2374,10 @@ function computeProductPadroes(){
   return padroes;
 }
 
+function escapeAttr(str){
+  return (str||'').toString().replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 function computeParadaPareto(rows){
   // Passo 1: agrupa por (motivo + data), pra identificar quando é UM MESMO evento
   // que afetou vários reatores ao mesmo tempo (ex: falta de energia geral)
@@ -2383,15 +2387,20 @@ function computeParadaPareto(rows){
     const paradaMins = parseMinutesOEE(r['TEMPO_PARADO']);
     if(!obsTxt || paradaMins <= 0) return;
     const dataRaw = r['DATA'];
-    const dataKey = dataRaw ? new Date(dataRaw).toISOString().slice(0,10) : 'sem-data-'+Math.random();
+    const dataObj = dataRaw ? new Date(dataRaw) : null;
+    const dataKey = dataObj ? dataObj.toISOString().slice(0,10) : 'sem-data-'+Math.random();
     const motivoKey = obsTxt.toLowerCase();
     const chave = motivoKey + '|' + dataKey;
-    if(!eventos[chave]) eventos[chave] = { label: obsTxt, mins: 0, reatores: new Set() };
+    const rNum = Number(r['REATOR']);
+    const produto = (r['PRODUTO']||'').toString().trim();
+    if(!eventos[chave]) eventos[chave] = { label: obsTxt, mins: 0, reatores: new Set(), dataObj, detalhes: [] };
     // Usa o MAIOR tempo entre os reatores afetados nesse mesmo evento, em vez de somar —
     // um mesmo problema (ex: falta de energia) não deve ser contado 2x só porque afetou 2 reatores
     eventos[chave].mins = Math.max(eventos[chave].mins, paradaMins);
-    const rNum = Number(r['REATOR']);
-    if(rNum >= 1 && rNum <= 4) eventos[chave].reatores.add(rNum);
+    if(rNum >= 1 && rNum <= 4){
+      eventos[chave].reatores.add(rNum);
+      eventos[chave].detalhes.push({ reator: rNum, produto, mins: paradaMins });
+    }
   });
 
   // Passo 2: agora agrupa os eventos (já sem duplicidade) por motivo —
@@ -2399,10 +2408,11 @@ function computeParadaPareto(rows){
   const acc = {};
   Object.values(eventos).forEach(evento => {
     const key = evento.label.toLowerCase();
-    if(!acc[key]) acc[key] = { label: evento.label, mins: 0, count: 0, reatores: new Set() };
+    if(!acc[key]) acc[key] = { label: evento.label, mins: 0, count: 0, reatores: new Set(), ocorrencias: [] };
     acc[key].mins += evento.mins;
     acc[key].count += 1;
     evento.reatores.forEach(rn => acc[key].reatores.add(rn));
+    acc[key].ocorrencias.push({ data: evento.dataObj, detalhes: evento.detalhes });
   });
   return Object.values(acc).sort((a,b) => b.mins - a.mins);
 }
@@ -2422,9 +2432,17 @@ function renderParadaPareto(rows){
     const barWidth = maxMins>0 ? (p.mins/maxMins*100) : 0;
     const horas = (p.mins/60).toFixed(1);
     const reatoresTxt = [...p.reatores].sort().map(n => 'R'+n).join(', ');
-    return `<div style="margin-bottom:14px;">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:4px;gap:8px;flex-wrap:wrap;">
-        <span style="flex:1;min-width:0;">${p.label} <span style="color:var(--ink-faint);font-size:11px;">${reatoresTxt ? '· '+reatoresTxt+' · ' : '· '}${p.count} ${p.count===1?'ocorrência':'ocorrências'}</span></span>
+    // Monta o texto do tooltip: uma linha por ocorrência, com data, reator(es), produto e duração
+    const tooltipTxt = p.ocorrencias
+      .sort((a,b) => (a.data||0) - (b.data||0))
+      .map(oc => {
+        const dataFmt = oc.data && !isNaN(oc.data) ? oc.data.toLocaleDateString('pt-BR') : 'data não registrada';
+        const detalheTxt = oc.detalhes.map(d => `R${d.reator} (${d.produto || 'produto'}, ${(d.mins/60).toFixed(1)}h)`).join(' + ');
+        return `${dataFmt}: ${detalheTxt}`;
+      }).join('\n');
+    return `<div style="margin-bottom:14px;" title="${escapeAttr(tooltipTxt)}">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:4px;gap:8px;flex-wrap:wrap;cursor:help;">
+        <span style="flex:1;min-width:0;">${p.label} <span style="color:var(--ink-faint);font-size:11px;">${reatoresTxt ? '· '+reatoresTxt+' · ' : '· '}${p.count} ${p.count===1?'ocorrência':'ocorrências'} ℹ️</span></span>
         <span style="font-family:'IBM Plex Mono';font-weight:600;white-space:nowrap;">${horas}h <span style="color:var(--ink-faint);">(${pct.toFixed(0)}%)</span></span>
       </div>
       <div style="width:100%;height:10px;background:var(--gauge-track);border-radius:5px;overflow:hidden;">
