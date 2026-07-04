@@ -2014,6 +2014,14 @@ function gerarRelatorioPDF(){
   const totalKg = sorted.reduce((s,[,v])=>s+v, 0);
   const totalLotes = rows.length;
 
+  // Custo total do período (soma só as linhas onde o CUSTO_OS já foi encontrado como número)
+  let custoTotal = 0, custoContagem = 0;
+  rows.forEach(r => {
+    const c = r['CUSTO_OS'];
+    if(typeof c === 'number'){ custoTotal += c; custoContagem++; }
+  });
+  const temCusto = custoContagem > 0;
+
   // Datas
   const datas = rows.map(r=>r['DATA']).sort((a,b)=>a-b);
   const dtIni = datas[0].toLocaleDateString('pt-BR');
@@ -2064,20 +2072,21 @@ function gerarRelatorioPDF(){
   doc.line(margem, y, W-margem, y); y += 10;
 
   // KPIs em caixas
-  const kpiW = util/4;
+  const kpiW = util/5;
   const nComprarMP = (window._mpItems||[]).filter(i=>i.status.includes('COMPRAR')).length;
   const kpis = [
     { val: totalKg.toLocaleString('pt-BR') + ' kg', label: 'Total produzido', cor: COR_DARK },
     { val: String(totalLotes), label: 'Lotes finalizados', cor: COR_DARK },
     { val: String(sorted.length), label: 'Produtos diferentes', cor: COR_DARK },
     { val: String(nComprarMP), label: 'MPs para comprar', cor: nComprarMP > 0 ? COR_VERM : COR_VERDE },
+    { val: temCusto ? custoTotal.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '—', label: 'Custo total', cor: COR_DARK },
   ];
   kpis.forEach((k, i) => {
     const x = margem + i*kpiW;
     doc.setFillColor(...COR_FUNDO);
     doc.roundedRect(x, y, kpiW-2, 20, 3, 3, 'F');
     doc.setFont('helvetica','bold');
-    doc.setFontSize(13);
+    doc.setFontSize(k.val.length > 10 ? 10 : 13);
     doc.setTextColor(...k.cor);
     doc.text(k.val, x + kpiW/2 - 1, y+9, {align:'center'});
     doc.setFont('helvetica','normal');
@@ -2288,6 +2297,25 @@ function gerarRelatorioGerencial(){
   const totalQual    = conformes + naoConformes;
   const taxaConf     = totalQual > 0 ? (conformes/totalQual*100).toFixed(1) : '—';
 
+  // ── CUSTO ──
+  let custoTotalMes = 0, custoContagemMes = 0, kgComCustoMes = 0;
+  finMes.forEach(r => {
+    const c = r['CUSTO_OS'];
+    if(typeof c === 'number'){
+      custoTotalMes += c;
+      custoContagemMes++;
+      kgComCustoMes += Number(r['Quantidade_Produzida_kg'])||0;
+    }
+  });
+  let custoTotalAnt = 0, custoContagemAnt = 0;
+  finAnt.forEach(r => { const c = r['CUSTO_OS']; if(typeof c === 'number'){ custoTotalAnt += c; custoContagemAnt++; } });
+  const temCustoMes = custoContagemMes > 0;
+  const temCustoAnt = custoContagemAnt > 0;
+  // Divide só pelo kg dos lotes que TÊM custo (senão o número fica artificialmente baixo,
+  // "diluído" pelos lotes que ainda não têm custo importado)
+  const custoPorKg = (temCustoMes && kgComCustoMes > 0) ? custoTotalMes/kgComCustoMes : null;
+  const variacaoCusto = (temCustoMes && temCustoAnt) ? ((custoTotalMes - custoTotalAnt) / custoTotalAnt * 100) : null;
+
   // ── RANKING PRODUTOS ──
   const prodTotais = {};
   const prodLotes  = {};
@@ -2380,6 +2408,57 @@ function gerarRelatorioGerencial(){
   doc.setFontSize(7);
   doc.setTextColor(...COR_CINZA);
   doc.text('vs mes anterior', xComp+kpiW/2-1, y+20, {align:'center'});
+  y += 28;
+
+  // ── CUSTO ──
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(12);
+  doc.setTextColor(...COR_DARK);
+  doc.text('Custo', margem, y); y += 4;
+  doc.setDrawColor(226,220,203);
+  doc.setLineWidth(0.3);
+  doc.line(margem, y, W-margem, y); y += 4;
+
+  const custoW = util/2;
+  const custoTotalTxto = temCustoMes ? custoTotalMes.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '—';
+  const custoKpis = [
+    { val: custoTotalTxto, label: 'Custo total', cor: COR_DARK },
+  ];
+  custoKpis.forEach((k, i) => {
+    const x = margem + i*custoW;
+    doc.setFillColor(...COR_FUNDO);
+    doc.roundedRect(x, y, custoW-2, 22, 3, 3, 'F');
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(k.val.length > 10 ? 11 : 13);
+    doc.setTextColor(...k.cor);
+    doc.text(k.val, x+custoW/2-1, y+10, {align:'center'});
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...COR_CINZA);
+    doc.text(k.label, x+custoW/2-1, y+17, {align:'center'});
+  });
+
+  // Card comparativo do custo — vs mês anterior
+  const xCustoComp = margem + 1*custoW;
+  doc.setFillColor(...COR_FUNDO);
+  doc.roundedRect(xCustoComp, y, custoW-2, 22, 3, 3, 'F');
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...COR_CINZA);
+  const custoAntTxto = temCustoAnt ? (mesANome + ': ' + custoTotalAnt.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})) : (mesANome ? mesANome + ': —' : 'sem mês anterior');
+  doc.text(custoAntTxto, xCustoComp+custoW/2-1, y+7, {align:'center'});
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(13);
+  const varCustoTexto = variacaoCusto !== null
+    ? (variacaoCusto >= 0 ? '(+) ' + variacaoCusto.toFixed(1) + '%' : '(-) ' + Math.abs(variacaoCusto).toFixed(1) + '%')
+    : '—';
+  const varCustoCor = variacaoCusto === null ? COR_CINZA : (variacaoCusto <= 0 ? COR_OK : COR_VERM);
+  doc.setTextColor(...varCustoCor);
+  doc.text(varCustoTexto, xCustoComp+custoW/2-1, y+15, {align:'center'});
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(7);
+  doc.setTextColor(...COR_CINZA);
+  doc.text('vs mes anterior', xCustoComp+custoW/2-1, y+20, {align:'center'});
   y += 28;
 
   // ── QUALIDADE ──
