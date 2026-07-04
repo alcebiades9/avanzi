@@ -3043,6 +3043,17 @@ function renderFichaCard(r){
 
   const paradaMins = parseMinutesOEE(r['TEMPO_PARADO']);
   const obsTxt = (r['OBS']||'').toString().trim();
+
+  // Custo (OS) — já vem calculado do Excel via PROCV com a aba Custos_GestaoPro
+  const custoRaw = r['CUSTO_OS'];
+  let custoTxt;
+  if(custoRaw === undefined || custoRaw === null || custoRaw === ''){
+    custoTxt = '—';
+  } else if(typeof custoRaw === 'number'){
+    custoTxt = custoRaw.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+  } else {
+    custoTxt = custoRaw.toString(); // ex: "⚠ OS de envase"
+  }
   const paradaHtml = paradaMins > 0 ? `
     <div style="margin-top:14px;padding:12px 14px;background:rgba(167,139,250,0.12);border:1px solid var(--purple);border-radius:8px;">
       <div style="font-size:12px;font-weight:600;color:var(--purple);">⚠ Parada registrada: ${(paradaMins/60).toFixed(1)}h</div>
@@ -3067,10 +3078,11 @@ function renderFichaCard(r){
         <div><div style="color:var(--ink-faint);font-size:11px;">NÚMERO DA OS</div><div style="font-family:'IBM Plex Mono';font-weight:600;word-break:break-word;">${escapeAttr((r['Numero_OS']||'—').toString())}</div></div>
         <div><div style="color:var(--ink-faint);font-size:11px;">DATA</div><div style="font-family:'IBM Plex Mono';font-weight:600;">${dataFmt}</div></div>
         <div><div style="color:var(--ink-faint);font-size:11px;">QUANTIDADE</div><div style="font-family:'IBM Plex Mono';font-weight:600;">${(Number(r['Quantidade_Produzida_kg'])||0).toLocaleString('pt-BR')} kg</div></div>
+        <div><div style="color:var(--ink-faint);font-size:11px;">CUSTO (OS)</div><div style="font-family:'IBM Plex Mono';font-weight:600;word-break:break-word;">${custoTxt}</div></div>
         <div><div style="color:var(--ink-faint);font-size:11px;">REATOR</div><div style="font-family:'IBM Plex Mono';font-weight:600;">${r['REATOR'] ? 'Reator '+r['REATOR'] : '—'}</div></div>
         <div><div style="color:var(--ink-faint);font-size:11px;">PERFORMANCE</div><div style="font-family:'IBM Plex Mono';font-weight:600;word-break:break-word;">${escapeAttr(performance.toString())}</div></div>
         <div><div style="color:var(--ink-faint);font-size:11px;">QUALIDADE</div><div style="font-family:'IBM Plex Mono';font-weight:600;word-break:break-word;">${escapeAttr(qualidade.toString())}</div></div>
-        <div style="grid-column:1 / -1;"><div style="color:var(--ink-faint);font-size:11px;">TEMPO DE PRODUÇÃO</div><div style="font-family:'IBM Plex Mono';font-weight:600;word-break:break-word;">${escapeAttr(tempoTotal.toString())}</div></div>
+        <div><div style="color:var(--ink-faint);font-size:11px;">TEMPO DE PRODUÇÃO</div><div style="font-family:'IBM Plex Mono';font-weight:600;word-break:break-word;">${escapeAttr(tempoTotal.toString())}</div></div>
       </div>
       ${paradaHtml}
       <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--line);font-size:10px;color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;">
