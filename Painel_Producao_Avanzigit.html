@@ -3009,7 +3009,7 @@ function renderTimeline(){
     for(let d = new Date(inicioClip); d <= fimClip; d.setDate(d.getDate()+1)){
       const key = rNum + '|' + d.toISOString().slice(0,10);
       if(!porCelula[key] || prioridade > porCelula[key].prioridade){
-        porCelula[key] = { prioridade, status: st, produto, qty, obs, loteId, numeroOS };
+        porCelula[key] = { prioridade, status: st, produto, qty, obs, loteId, numeroOS, row: r };
       }
     }
   });
@@ -3073,20 +3073,23 @@ function renderTimeline(){
   container.querySelectorAll('.timeline-block').forEach(el => {
     const info = porCelula[el.dataset.key];
     if(!info) return; // dia vazio (ocioso) não navega pra lugar nenhum
-    el.addEventListener('click', () => irParaFichaDoLote(info.numeroOS, info.produto));
+    el.addEventListener('click', () => irParaFichaDoLote(info));
   });
 }
 
-function irParaFichaDoLote(numeroOS, produto){
+function irParaFichaDoLote(info){
   // ativa a aba "Ficha do Lote" do mesmo jeito que o clique manual na aba faria
   const btnFicha = document.querySelector('.tab-btn[data-tab="ficha"]');
   if(btnFicha) btnFicha.click();
 
   const input = document.getElementById('fichaSearchInput');
-  if(!input) return;
-  // Prioriza buscar pelo Número da OS (mais preciso); se não tiver OS registrada, cai pro nome do produto
-  input.value = numeroOS && numeroOS.trim() ? numeroOS : produto;
-  buscarFicha();
+  if(input) input.value = info.numeroOS && info.numeroOS.trim() ? info.numeroOS : info.produto;
+
+  // O quadrado já sabe exatamente qual linha da planilha ele representa (data + produto + reator
+  // batidos no momento de montar a Linha do Tempo), então abre a ficha direto — sem precisar
+  // pesquisar por texto nem escolher numa lista, mesmo quando o lote não tem Número da OS.
+  window._fichaUltimaLista = null;
+  renderFichaCard(info.row);
 }
 
 function buscarFicha(){
