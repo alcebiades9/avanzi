@@ -3005,10 +3005,11 @@ function renderTimeline(){
     if(inicioClip > fimClip) return;
 
     const prioridade = st === 'PARADO!' ? 3 : st === 'EM ANDAMENTO' ? 2 : st === 'FINALIZADO' ? 1 : 0;
+    const numeroOS = (r['Numero_OS']||'').toString().trim();
     for(let d = new Date(inicioClip); d <= fimClip; d.setDate(d.getDate()+1)){
       const key = rNum + '|' + d.toISOString().slice(0,10);
       if(!porCelula[key] || prioridade > porCelula[key].prioridade){
-        porCelula[key] = { prioridade, status: st, produto, qty, obs, loteId };
+        porCelula[key] = { prioridade, status: st, produto, qty, obs, loteId, numeroOS };
       }
     }
   });
@@ -3053,7 +3054,7 @@ function renderTimeline(){
       const mRight = coladoNext ? '0px' : '1px';
       const rLeft = coladoPrev ? '0px' : '4px';
       const rRight = coladoNext ? '0px' : '4px';
-      html += `<div title="${escapeAttr(tooltip)}" style="width:${cellSize-2}px;height:${cellSize-2}px;margin:1px ${mRight} 1px ${mLeft};background:${cor};border-radius:${rLeft} ${rRight} ${rRight} ${rLeft};flex-shrink:0;cursor:${info?'help':'default'};"></div>`;
+      html += `<div class="timeline-block" data-key="${rNum}|${d.toISOString().slice(0,10)}" title="${escapeAttr(tooltip)}" style="width:${cellSize-2}px;height:${cellSize-2}px;margin:1px ${mRight} 1px ${mLeft};background:${cor};border-radius:${rLeft} ${rRight} ${rRight} ${rLeft};flex-shrink:0;cursor:${info?'pointer':'default'};"></div>`;
     });
     html += `</div>`;
   }
@@ -3067,6 +3068,25 @@ function renderTimeline(){
   </div>`;
 
   container.innerHTML = html;
+
+  // Clique no quadrado leva direto pra Ficha do Lote já preenchida
+  container.querySelectorAll('.timeline-block').forEach(el => {
+    const info = porCelula[el.dataset.key];
+    if(!info) return; // dia vazio (ocioso) não navega pra lugar nenhum
+    el.addEventListener('click', () => irParaFichaDoLote(info.numeroOS, info.produto));
+  });
+}
+
+function irParaFichaDoLote(numeroOS, produto){
+  // ativa a aba "Ficha do Lote" do mesmo jeito que o clique manual na aba faria
+  const btnFicha = document.querySelector('.tab-btn[data-tab="ficha"]');
+  if(btnFicha) btnFicha.click();
+
+  const input = document.getElementById('fichaSearchInput');
+  if(!input) return;
+  // Prioriza buscar pelo Número da OS (mais preciso); se não tiver OS registrada, cai pro nome do produto
+  input.value = numeroOS && numeroOS.trim() ? numeroOS : produto;
+  buscarFicha();
 }
 
 function buscarFicha(){
