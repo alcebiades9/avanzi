@@ -1552,6 +1552,8 @@ function renderWeekPlan(mrpSheet, allRows){
   const statusMapName = {}; // chave: só nome (apenas produtos únicos)
   const obsMap = {};        // chave: nome|qty → texto da coluna OBS
   const obsMapName = {};    // chave: só nome
+  const rowMap = {};        // chave: nome|qty → linha real da planilha (pra abrir a ficha direto)
+  const rowMapName = {};    // chave: só nome
   if(allRows){
     allRows.forEach(r => {
       const st = (r['Status']||'').toString().trim().toUpperCase();
@@ -1561,14 +1563,15 @@ function renderWeekPlan(mrpSheet, allRows){
       const key = p + '|' + qty;
       if(st === 'PARADO!'){
         statusMap[key] = 'stopped';
-        if((mrpCount[p]||0) <= 1) statusMapName[p] = 'stopped';
+        rowMap[key] = r;
+        if((mrpCount[p]||0) <= 1){ statusMapName[p] = 'stopped'; rowMapName[p] = r; }
         const obsTxt = (r['OBS']||'').toString().trim();
         if(obsTxt){ obsMap[key] = obsTxt; obsMapName[p] = obsTxt; }
         return;
       }
       if(st === 'EM ANDAMENTO'){
-        if(statusMap[key] !== 'stopped') statusMap[key] = 'active';
-        if((mrpCount[p]||0) <= 1 && statusMapName[p] !== 'stopped') statusMapName[p] = 'active';
+        if(statusMap[key] !== 'stopped'){ statusMap[key] = 'active'; rowMap[key] = r; }
+        if((mrpCount[p]||0) <= 1 && statusMapName[p] !== 'stopped'){ statusMapName[p] = 'active'; rowMapName[p] = r; }
         return;
       }
       if(st === 'FINALIZADO'){
@@ -1576,21 +1579,24 @@ function renderWeekPlan(mrpSheet, allRows){
         const dataFim = r['Hora_Fim'] ? new Date(r['Hora_Fim']) : null;
         const contaEssaSemana = (data && data >= inicioSemana) || (dataFim && dataFim >= inicioSemana);
         if(contaEssaSemana){
-          if(statusMap[key] !== 'active' && statusMap[key] !== 'stopped') statusMap[key] = 'done';
-          if((mrpCount[p]||0) <= 1 && statusMapName[p] !== 'active' && statusMapName[p] !== 'stopped') statusMapName[p] = 'done';
+          if(statusMap[key] !== 'active' && statusMap[key] !== 'stopped'){ statusMap[key] = 'done'; rowMap[key] = r; }
+          if((mrpCount[p]||0) <= 1 && statusMapName[p] !== 'active' && statusMapName[p] !== 'stopped'){ statusMapName[p] = 'done'; rowMapName[p] = r; }
         }
       }
     });
   }
 
   const total = items.reduce((s,i)=>s+i.qty,0);
+  const linhasParaClique = []; // guarda a linha real (ou null) de cada item, na mesma ordem do rowsHtml
 
-  const rowsHtml = items.map(i => {
+  const rowsHtml = items.map((i, idx) => {
     const key = makeKey(i.produto, i.qty);
     const pLow = i.produto.toLowerCase().trim();
     // usa nome+qty; fallback por nome só se produto é único no MRP
     const st = statusMap[key] || ((mrpCount[pLow]||0) <= 1 ? statusMapName[pLow] : undefined);
     const obsTxt = obsMap[key] || ((mrpCount[pLow]||0) <= 1 ? obsMapName[pLow] : undefined);
+    const matchedRow = rowMap[key] || ((mrpCount[pLow]||0) <= 1 ? rowMapName[pLow] : undefined);
+    linhasParaClique[idx] = matchedRow || null;
     const dot = st === 'stopped'
       ? `<span title="Parado${obsTxt ? ': '+obsTxt : ''}" style="width:9px;height:9px;border-radius:50%;background:var(--purple);display:inline-block;flex-shrink:0;margin-right:8px;"></span>`
       : st === 'active'
@@ -1600,7 +1606,7 @@ function renderWeekPlan(mrpSheet, allRows){
       : `<span style="width:9px;height:9px;border-radius:50%;background:var(--dot-planejado);display:inline-block;flex-shrink:0;margin-right:8px;"></span>`;
     const obsLine = (st === 'stopped' && obsTxt) ? `<div style="font-size:11px;color:var(--purple);margin-left:17px;">⏸ ${obsTxt}</div>` : '';
     return `
-    <tr>
+    <tr class="plano-row" data-idx="${idx}" style="cursor:pointer;" title="Clique pra ver a ficha desse lote">
       <td><div style="display:flex;align-items:center;">${dot}${i.produto}</div>${obsLine}</td>
       <td class="num">${fmtKg(i.qty)} kg<span class="pct">${(i.qty/total*100).toFixed(1)}%</span></td>
     </tr>`;
@@ -1615,6 +1621,18 @@ function renderWeekPlan(mrpSheet, allRows){
       </tbody>
     </table>
   `;
+
+  // Clique na linha leva pra Ficha do Lote — se já tiver um lote batendo essa semana, abre ele
+  // direto (sem precisar buscar); senão, cai pra busca por nome do produto (mostra o histórico).
+  el.querySelectorAll('.plano-row').forEach(tr => {
+    const idx = Number(tr.dataset.idx);
+    const matchedRow = linhasParaClique[idx];
+    const produtoNome = items[idx].produto;
+    tr.addEventListener('click', () => {
+      if(matchedRow){ irParaFichaDoLote({ numeroOS: (matchedRow['Numero_OS']||'').toString().trim(), produto: produtoNome, row: matchedRow }); }
+      else { irParaFichaDoLote({ numeroOS: '', produto: produtoNome, row: null }); }
+    });
+  });
 }
 
 function parseReactorProducts(rows){
@@ -3085,11 +3103,17 @@ function irParaFichaDoLote(info){
   const input = document.getElementById('fichaSearchInput');
   if(input) input.value = info.numeroOS && info.numeroOS.trim() ? info.numeroOS : info.produto;
 
-  // O quadrado já sabe exatamente qual linha da planilha ele representa (data + produto + reator
-  // batidos no momento de montar a Linha do Tempo), então abre a ficha direto — sem precisar
-  // pesquisar por texto nem escolher numa lista, mesmo quando o lote não tem Número da OS.
-  window._fichaUltimaLista = null;
-  renderFichaCard(info.row);
+  if(info.row){
+    // Já sabemos exatamente qual linha da planilha é essa (data + produto + reator batidos
+    // no momento de montar a Linha do Tempo / Plano da semana), então abre a ficha direto —
+    // sem precisar pesquisar por texto nem escolher numa lista, mesmo sem Número da OS.
+    window._fichaUltimaLista = null;
+    renderFichaCard(info.row);
+  } else {
+    // Não tem lote batendo essa semana (ex.: item do Plano da semana que ainda nem começou) —
+    // cai pra busca normal por nome/OS, que mostra o histórico ou avisa que não achou nada.
+    buscarFicha();
+  }
 }
 
 function buscarFicha(){
