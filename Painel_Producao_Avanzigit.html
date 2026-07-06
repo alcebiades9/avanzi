@@ -1325,7 +1325,9 @@ function renderMateriasPrimas(mrpSheet, allRows){
       const st = (r['Status']||'').toString().trim().toUpperCase();
       if(st !== 'FINALIZADO') return;
       const data = r['DATA'] ? new Date(r['DATA']) : null;
-      if(!data || data < inicioSem) return;
+      const dataFim = r['Hora_Fim'] ? new Date(r['Hora_Fim']) : null;
+      const contaEssaSemana = (data && data >= inicioSem) || (dataFim && dataFim >= inicioSem);
+      if(!contaEssaSemana) return;
       const p = (r['PRODUTO']||'').toString().trim().toLowerCase();
       const qty = Number(r['Quantidade_Produzida_kg'])||0;
       finalizedQty[p] = (finalizedQty[p]||0) + qty;
@@ -1571,7 +1573,9 @@ function renderWeekPlan(mrpSheet, allRows){
       }
       if(st === 'FINALIZADO'){
         const data = r['DATA'] ? new Date(r['DATA']) : null;
-        if(data && data >= inicioSemana){
+        const dataFim = r['Hora_Fim'] ? new Date(r['Hora_Fim']) : null;
+        const contaEssaSemana = (data && data >= inicioSemana) || (dataFim && dataFim >= inicioSemana);
+        if(contaEssaSemana){
           if(statusMap[key] !== 'active' && statusMap[key] !== 'stopped') statusMap[key] = 'done';
           if((mrpCount[p]||0) <= 1 && statusMapName[p] !== 'active' && statusMapName[p] !== 'stopped') statusMapName[p] = 'done';
         }
@@ -1728,7 +1732,9 @@ function renderReactors(crpSheet, allRows, mrpItems){
       const st = (r['Status']||'').toString().trim().toUpperCase();
       if(st !== 'FINALIZADO') return;
       const data = r['DATA'] ? new Date(r['DATA']) : null;
-      if(!data || data < inicioSR) return;
+      const dataFim = r['Hora_Fim'] ? new Date(r['Hora_Fim']) : null;
+      const contaEssaSemana = (data && data >= inicioSR) || (dataFim && dataFim >= inicioSR);
+      if(!contaEssaSemana) return;
       const p = (r['PRODUTO']||'').toString().trim().toLowerCase();
       const qty = Math.round(Number(r['Quantidade_Produzida_kg'])||0);
       finQtyR[p] = (finQtyR[p]||0) + qty;
@@ -1833,7 +1839,11 @@ function renderReactors(crpSheet, allRows, mrpItems){
         activeProductsR[p] = true; // fallback por nome
       } else if(st === 'FINALIZADO'){
         const data = r['DATA'] ? new Date(r['DATA']) : null;
-        if(data && data >= inicioSemana2){
+        const dataFim = r['Hora_Fim'] ? new Date(r['Hora_Fim']) : null;
+        // conta como "done" essa semana se a DATA de lançamento OU a Hora_Fim real
+        // caírem dentro da semana atual (cobre lotes que pausaram e atravessaram a virada de semana)
+        const contaEssaSemana = (data && data >= inicioSemana2) || (dataFim && dataFim >= inicioSemana2);
+        if(contaEssaSemana){
           if(!activeProductsR[key] && !stoppedProductsR[key]) doneProductsR[key] = true;
           if(!activeProductsR[p] && !stoppedProductsR[p]) doneProductsR[p] = true;
         }
