@@ -392,6 +392,9 @@
   .err{background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:14px 18px;font-size:13.5px;margin-bottom:20px;}
   #dashboard{display:none;}
 </style>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="apple-touch-icon" href="icon-192.png">
 </head>
 <body>
 
@@ -3410,5 +3413,14 @@ document.getElementById('oeeMonthFilter')?.addEventListener('change', () => rend
 document.getElementById('timelineMonthFilter')?.addEventListener('change', () => renderTimeline());
 
 </script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("sw.js")
+            .then(() => console.log("Service Worker registrado!"))
+            .catch((erro) => console.log("Erro no SW:", erro));
+        });
+      }
+    </script>
 </body>
 </html>
