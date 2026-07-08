@@ -422,6 +422,14 @@
     </button>
   </div>
   <div class="sidebar-section">
+    <div class="sidebar-section-label">Alertas</div>
+    <button class="sidebar-item" id="sidebarAlertas" onclick="closeSidebar();alternarAlertas()">
+      <span class="si-icon">🔔</span>
+      <span class="si-label">Alertas de matéria-prima</span>
+      <span class="si-toggle" id="alertasStatus">Desativado</span>
+    </button>
+  </div>
+  <div class="sidebar-section">
     <div class="sidebar-section-label">Links</div>
     <a class="sidebar-item" href="https://alcebiades9.github.io/avanzi/planta_producao_avanzi_final.pdf" target="_blank">
       <span class="si-icon">🏭</span>
@@ -3496,9 +3504,11 @@ document.getElementById('timelineMonthFilter')?.addEventListener('change', () =>
         setInterval(checarNovaVersao, 2 * 60 * 1000); // e a cada 2 minutos
       })();
     </script>
-
-    <!-- ===== Botao de ativar alertas (push) ===== -->
-    <button id="btnAlertas" onclick="ativarAlertas()" style="position:fixed; right:16px; bottom:84px; z-index:99998; background:#8bc34a; color:#0f172a; border:none; font-weight:700; padding:12px 18px; border-radius:999px; font-size:14px; cursor:pointer; box-shadow:0 6px 20px rgba(0,0,0,.35); font-family:system-ui,sans-serif;">&#128276; Ativar alertas</button>
+    <!-- ===== Dica de alertas (aparece na abertura se ainda nao ativou) ===== -->
+    <div id="dicaAlertas" style="display:none; position:fixed; top:12px; left:50%; transform:translateX(-50%); z-index:100000; background:#0f172a; color:#f1f5f9; border:1px solid #8bc34a; border-radius:12px; padding:12px 16px; box-shadow:0 8px 30px rgba(0,0,0,.35); font-family:system-ui,sans-serif; font-size:13.5px; max-width:92%; align-items:center; gap:10px;">
+      <span>&#128276; Ative os <b>alertas de mat&eacute;ria-prima</b> no menu <b>&#9776;</b> (canto superior direito).</span>
+      <button onclick="document.getElementById('dicaAlertas').style.display='none'" style="background:#8bc34a;color:#0f172a;border:none;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer;flex-shrink:0;">Ok</button>
+    </div>
 
     <script>
       const VAPID_PUBLICA = "BHVMRV1rwHI7OO9G5xjBYQMFAg0iYvgk_Jxsa2CHmHCG11Xp5XWW72y3znR-QlmFrnFTYWS2UC06V4Pvrkw4ZOw";
@@ -3542,21 +3552,78 @@ document.getElementById('timelineMonthFilter')?.addEventListener('change', () =>
         }
       }
 
-      async function atualizarBotaoAlertas() {
-        const btn = document.getElementById("btnAlertas");
-        if (!btn) return;
+      // Se ja esta inscrito -> desativa. Se nao -> ativa.
+      async function alternarAlertas() {
         try {
           const reg = await navigator.serviceWorker.ready;
           const sub = await reg.pushManager.getSubscription();
           if (sub && Notification.permission === "granted") {
-            btn.innerHTML = "&#128276; Alertas ativados";
-            btn.style.background = "#334155";
-            btn.style.color = "#e2e8f0";
+            await desativarAlertas();
+          } else {
+            await ativarAlertas();
+          }
+        } catch (e) {
+          console.error(e);
+          alert("Nao consegui alterar os alertas: " + e);
+        }
+      }
+
+      async function desativarAlertas() {
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          const sub = await reg.pushManager.getSubscription();
+          if (!sub) { atualizarBotaoAlertas(); return; }
+
+          const endpoint = sub.endpoint;
+          await sub.unsubscribe();
+
+          await fetch(URL_INSCRICOES, {
+            method: "POST",
+            mode: "no-cors",
+            body: JSON.stringify({ acao: "remover", endpoint: endpoint })
+          });
+
+          atualizarBotaoAlertas();
+          alert("Alertas desativados neste aparelho.");
+        } catch (e) {
+          console.error(e);
+          alert("Nao consegui desativar: " + e);
+        }
+      }
+
+      async function atualizarBotaoAlertas() {
+        const status = document.getElementById("alertasStatus");
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          const sub = await reg.pushManager.getSubscription();
+          if (status) {
+            if (sub && Notification.permission === "granted") {
+              status.textContent = "Ativado";
+              status.style.color = "#8bc34a";
+            } else {
+              status.textContent = "Desativado";
+              status.style.color = "";
+            }
           }
         } catch (e) {}
       }
 
-      window.addEventListener("load", () => setTimeout(atualizarBotaoAlertas, 1200));
+      // Mostra a dica na abertura, so se ainda NAO tiver ativado
+      async function mostrarDicaAlertas() {
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          const sub = await reg.pushManager.getSubscription();
+          if (!sub || Notification.permission !== "granted") {
+            const dica = document.getElementById("dicaAlertas");
+            if (dica) dica.style.display = "flex";
+          }
+        } catch (e) {}
+      }
+
+      window.addEventListener("load", () => setTimeout(() => {
+        atualizarBotaoAlertas();
+        mostrarDicaAlertas();
+      }, 1500));
     </script>
 </body>
 </html>
