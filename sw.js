@@ -1,4 +1,4 @@
-const CACHE_NOME = "painel-avanzi-v1"; // troque pra v2, v3... quando atualizar o painel
+const CACHE_NOME = "painel-avanzi-v2"; // subiu pra v2 pra forcar a atualizacao
 
 const ARQUIVOS_ESSENCIAIS = [
   "./",
@@ -25,14 +25,30 @@ self.addEventListener("activate", (evento) => {
 });
 
 self.addEventListener("fetch", (evento) => {
-  const url = evento.request.url;
+  const req = evento.request;
+  const url = req.url;
+
+  // Dados do Google Sheets: rede primeiro
   if (url.includes("docs.google.com") || url.includes("google")) {
+    evento.respondWith(fetch(req).catch(() => caches.match(req)));
+    return;
+  }
+
+  // Pagina do painel (navegacao): SEMPRE busca a versao nova na internet.
+  // So usa a copia guardada se estiver offline.
+  if (req.mode === "navigate" || req.destination === "document") {
     evento.respondWith(
-      fetch(evento.request).catch(() => caches.match(evento.request))
+      fetch(req)
+        .then((resp) => {
+          const copia = resp.clone();
+          caches.open(CACHE_NOME).then((c) => c.put(req, copia));
+          return resp;
+        })
+        .catch(() => caches.match(req).then((r) => r || caches.match("./Painel_Producao_Avanzigit.html")))
     );
     return;
   }
-  evento.respondWith(
-    caches.match(evento.request).then((resp) => resp || fetch(evento.request))
-  );
+
+  // Resto (icones, bibliotecas): cache primeiro (rapido)
+  evento.respondWith(caches.match(req).then((resp) => resp || fetch(req)));
 });
