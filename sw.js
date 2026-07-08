@@ -1,4 +1,4 @@
-const CACHE_NOME = "painel-avanzi-v2"; // subiu pra v2 pra forcar a atualizacao
+const CACHE_NOME = "painel-avanzi-v3"; // subiu pra v3 (agora com push)
 
 const ARQUIVOS_ESSENCIAIS = [
   "./",
@@ -35,7 +35,6 @@ self.addEventListener("fetch", (evento) => {
   }
 
   // Pagina do painel (navegacao): SEMPRE busca a versao nova na internet.
-  // So usa a copia guardada se estiver offline.
   if (req.mode === "navigate" || req.destination === "document") {
     evento.respondWith(
       fetch(req)
@@ -51,4 +50,38 @@ self.addEventListener("fetch", (evento) => {
 
   // Resto (icones, bibliotecas): cache primeiro (rapido)
   evento.respondWith(caches.match(req).then((resp) => resp || fetch(req)));
+});
+
+// ===== Recebe a notificacao push e mostra na tela =====
+self.addEventListener("push", (evento) => {
+  let dados = { title: "Avanzi Quimica", body: "Nova notificacao" };
+  try {
+    dados = evento.data.json();
+  } catch (e) {
+    if (evento.data) dados.body = evento.data.text();
+  }
+  const opcoes = {
+    body: dados.body || "",
+    icon: "icon-192.png",
+    badge: "icon-192.png",
+    vibrate: [100, 50, 100],
+    data: dados.url || "./Painel_Producao_Avanzigit.html"
+  };
+  evento.waitUntil(
+    self.registration.showNotification(dados.title || "Avanzi Quimica", opcoes)
+  );
+});
+
+// ===== Ao clicar na notificacao, abre/foca o painel =====
+self.addEventListener("notificationclick", (evento) => {
+  evento.notification.close();
+  const destino = evento.notification.data || "./";
+  evento.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((lista) => {
+      for (const c of lista) {
+        if ("focus" in c) return c.focus();
+      }
+      if (clients.openWindow) return clients.openWindow(destino);
+    })
+  );
 });

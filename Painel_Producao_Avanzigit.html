@@ -3496,5 +3496,67 @@ document.getElementById('timelineMonthFilter')?.addEventListener('change', () =>
         setInterval(checarNovaVersao, 2 * 60 * 1000); // e a cada 2 minutos
       })();
     </script>
+
+    <!-- ===== Botao de ativar alertas (push) ===== -->
+    <button id="btnAlertas" onclick="ativarAlertas()" style="position:fixed; right:16px; bottom:84px; z-index:99998; background:#8bc34a; color:#0f172a; border:none; font-weight:700; padding:12px 18px; border-radius:999px; font-size:14px; cursor:pointer; box-shadow:0 6px 20px rgba(0,0,0,.35); font-family:system-ui,sans-serif;">&#128276; Ativar alertas</button>
+
+    <script>
+      const VAPID_PUBLICA = "BHVMRV1rwHI7OO9G5xjBYQMFAg0iYvgk_Jxsa2CHmHCG11Xp5XWW72y3znR-QlmFrnFTYWS2UC06V4Pvrkw4ZOw";
+      const URL_INSCRICOES = "https://script.google.com/macros/s/AKfycbzte0HDd7ZAJbjevRGfl5R7OsownJUqsclAalV7tdJLzzYbkoKkT9-0_QDJWhHKdu5U/exec";
+
+      function urlBase64ToUint8Array(base64String) {
+        const padding = "=".repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+        const raw = atob(base64);
+        const arr = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; ++i) arr[i] = raw.charCodeAt(i);
+        return arr;
+      }
+
+      async function ativarAlertas() {
+        try {
+          if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+            alert("Seu navegador nao suporta notificacoes.");
+            return;
+          }
+          const permissao = await Notification.requestPermission();
+          if (permissao !== "granted") {
+            alert("Voce precisa permitir as notificacoes para ativar os alertas.");
+            return;
+          }
+          const reg = await navigator.serviceWorker.ready;
+          let sub = await reg.pushManager.getSubscription();
+          if (!sub) {
+            sub = await reg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLICA)
+            });
+          }
+          // envia a inscricao pro Google (Apps Script). no-cors = so envia, nao le resposta.
+          await fetch(URL_INSCRICOES, { method: "POST", mode: "no-cors", body: JSON.stringify(sub) });
+          atualizarBotaoAlertas();
+          alert("Alertas ativados! Voce recebera avisos de materia-prima.");
+        } catch (e) {
+          console.error(e);
+          alert("Nao consegui ativar os alertas: " + e);
+        }
+      }
+
+      async function atualizarBotaoAlertas() {
+        const btn = document.getElementById("btnAlertas");
+        if (!btn) return;
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          const sub = await reg.pushManager.getSubscription();
+          if (sub && Notification.permission === "granted") {
+            btn.innerHTML = "&#128276; Alertas ativados";
+            btn.style.background = "#334155";
+            btn.style.color = "#e2e8f0";
+          }
+        } catch (e) {}
+      }
+
+      window.addEventListener("load", () => setTimeout(atualizarBotaoAlertas, 1200));
+    </script>
 </body>
 </html>
