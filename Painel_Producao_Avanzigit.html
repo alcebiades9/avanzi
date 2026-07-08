@@ -3462,5 +3462,34 @@ document.getElementById('timelineMonthFilter')?.addEventListener('change', () =>
         if (_banner) _banner.style.display = "none";
       });
     </script>
+
+    <!-- ===== Auto-atualizacao: recarrega sozinho quando sair versao nova ===== -->
+    <script>
+      (function () {
+        const PAGINA = "Painel_Producao_Avanzigit.html";
+        let versaoConhecida = null;
+
+        async function checarNovaVersao() {
+          try {
+            const resp = await fetch(PAGINA + "?_v=" + Date.now(), { method: "HEAD", cache: "no-store" });
+            const marca = resp.headers.get("ETag") || resp.headers.get("Last-Modified");
+            if (!marca) return;
+            if (versaoConhecida === null) {
+              versaoConhecida = marca;            // guarda a versao atual na 1a checagem
+            } else if (marca !== versaoConhecida) {
+              // saiu versao nova -> avisa e recarrega sozinho
+              const aviso = document.createElement("div");
+              aviso.textContent = "Atualizando para a nova versao...";
+              aviso.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:100000;background:#8bc34a;color:#0f172a;font-weight:700;text-align:center;padding:10px;font-family:system-ui,sans-serif;";
+              document.body.appendChild(aviso);
+              setTimeout(() => location.reload(), 1500);
+            }
+          } catch (e) { /* sem internet: ignora e tenta na proxima */ }
+        }
+
+        checarNovaVersao();                          // checa ao abrir
+        setInterval(checarNovaVersao, 2 * 60 * 1000); // e a cada 2 minutos
+      })();
+    </script>
 </body>
 </html>
