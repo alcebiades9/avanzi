@@ -27,6 +27,8 @@ Sistema de Planejamento e Controle da Produção (PCP) desenvolvido para acompan
 - **Menu lateral** — acesso rápido a relatórios, planta de produção, documentação e modo escuro
 - **Rastreamento de acessos** — Google Analytics integrado para monitorar uso do painel
 - **Atualização automática** — recarrega os dados a cada 3 minutos
+- **PWA (Progressive Web App)** — instalável no celular e desktop como app nativo, com ícone na tela inicial e verificação automática de atualizações
+- **Notificações push no celular** — alerta direto no navegador/celular quando matéria-prima está abaixo do estoque mínimo, com inscrição pelo próprio painel
 - **Layout responsivo** — testado e ajustado para uso confortável no celular
 
 ---
@@ -38,7 +40,10 @@ Sistema de Planejamento e Controle da Produção (PCP) desenvolvido para acompan
 | `Painel_Producao_Avanzigit.html` | Painel web publicado via GitHub Pages |
 | `producao_unificado.xlsm` | Planilha principal com Registro de Produção, MRP, CRP, Controle de MP, OEE e Histórico de Alertas |
 | `planta_producao_avanzi_final.pdf` | Planta baixa da área de produção com zonas de segurança e equipamentos |
-| `alerta_mp_avanzi.py` | Script Python de alerta de MP crítica por e-mail |
+| `alerta_mp_avanzi.py` | Script Python de alerta de MP crítica por e-mail e notificações push |
+| `manifest.json` | Manifesto PWA (nome, ícones, cores, modo standalone) |
+| `sw.js` | Service Worker — cache offline e controle de atualizações |
+| `icon-192.png` / `icon-512.png` | Ícones do app (logo Avanzi) para instalação PWA |
 
 ---
 
@@ -49,8 +54,19 @@ Excel (producao_unificado.xlsm)
         ↓ salva e sincroniza
 Google Drive (arquivo público)
         ↓ painel lê a cada 3 minutos
-Painel HTML (GitHub Pages)
+Painel HTML (GitHub Pages) ← instalável como PWA
         ↓ exibe para qualquer dispositivo
+
+--- Fluxo de Alertas ---
+
+alerta_mp_avanzi.py (Agendador de Tarefas, 08h)
+        ↓ lê estoque via Google Sheets
+        ↓ MP abaixo do mínimo?
+        ├→ E-mail com tabela de MPs críticas
+        └→ Push notification nos dispositivos inscritos
+               ↑
+        Google Sheets (Inscricoes_Push_Avanzi)
+        armazena inscrições dos navegadores
 ```
 
 1. Os dados são registrados no arquivo Excel
@@ -162,13 +178,15 @@ Basta escolher o mês e o mês anterior para comparativo.
 
 ---
 
-## 📧 Alerta de MP Crítica por E-mail
+## 📧 Alerta de MP Crítica por E-mail e Push
 
-Script Python (`alerta_mp_avanzi.py`) que verifica automaticamente os estoques e envia um e-mail quando alguma matéria-prima está abaixo do estoque mínimo.
+Script Python (`alerta_mp_avanzi.py`) que verifica automaticamente os estoques e envia alertas quando alguma matéria-prima está abaixo do estoque mínimo.
 
 - Configurado via **Agendador de Tarefas do Windows** para rodar todo dia às 08:00
-- Envia e-mail apenas quando há MPs críticas — sem spam quando tudo está OK
-- E-mail formatado com tabela, ícones de alerta e rodapé profissional
+- Envia **e-mail** com tabela formatada quando há MPs críticas — sem spam quando tudo está OK
+- Envia **notificação push** direto no celular/navegador dos dispositivos inscritos
+- Lê as inscrições push de uma planilha Google Sheets (`Inscricoes_Push_Avanzi`)
+- Remove automaticamente inscrições inválidas (dispositivos que desativaram os alertas)
 - Estoque mínimo configurável por matéria-prima
 
 ---
@@ -212,6 +230,30 @@ Planta baixa técnica da área de produção com:
 - Zonas de segurança e sinalização
 
 📥 **[Abrir / Baixar Planta Baixa](https://alcebiades9.github.io/avanzi/planta_producao_avanzi_final.pdf)**
+
+---
+
+## 📱 PWA — App Instalável
+
+O painel funciona como Progressive Web App:
+
+- **Instalar no celular** — ao acessar pelo Chrome, aparece um banner "Adicionar à tela inicial". O painel fica com ícone próprio, abre em tela cheia sem barra do navegador
+- **Instalar no PC** — Chrome mostra ícone de instalação na barra de endereço
+- **Verificação de atualizações** — a cada 2 minutos o painel verifica se há versão nova no servidor (via ETag). Se houver, exibe aviso para recarregar
+- **Service Worker** — gerencia cache e permite carregamento mais rápido
+
+---
+
+## 🔔 Notificações Push
+
+Qualquer usuário do painel pode ativar alertas de matéria-prima direto no celular:
+
+1. Abre o menu lateral → seção **Alertas**
+2. Clica em **Ativar notificações**
+3. Aceita a permissão do navegador
+4. Pronto — quando o script Python rodar e detectar MP abaixo do mínimo, o celular recebe a notificação mesmo com o navegador fechado
+
+As inscrições ficam salvas em uma planilha Google Sheets separada (`Inscricoes_Push_Avanzi`). A comunicação usa protocolo Web Push com chaves VAPID.
 
 ---
 
