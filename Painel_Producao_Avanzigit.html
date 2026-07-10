@@ -3091,7 +3091,7 @@ function renderTimeline(){
     for(let d = new Date(inicioClip); d <= fimClip; d.setDate(d.getDate()+1)){
       const key = rNum + '|' + d.toISOString().slice(0,10);
       const dow = d.getDay();
-      const planejada = planMinsLote > 0 && (dow === 0 || dow === 6);
+      const planejada = (dow === 0 || dow === 6);
       if(!porCelula[key] || prioridade > porCelula[key].prioridade){
         porCelula[key] = { prioridade, status: st, produto, qty, obs, loteId, numeroOS, row: r, planejada, temDetalhe };
       }
