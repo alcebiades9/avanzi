@@ -3152,7 +3152,7 @@ function renderTimeline(){
       const rLeft = coladoPrev ? '0px' : '4px';
       const rRight = coladoNext ? '0px' : '4px';
       const bg = (info && info.planejada)
-        ? `repeating-linear-gradient(45deg, var(--gauge-track) 0 3px, var(--line) 3px 6px)`
+        ? `repeating-linear-gradient(45deg, var(--gauge-track) 0 3px, var(--purple) 3px 6px)`
         : cor;
       html += `<div class="timeline-block" data-key="${rNum}|${d.toISOString().slice(0,10)}" title="${escapeAttr(tooltip)}" style="width:${larguraCel}px;height:${cellSize-2}px;margin:1px ${mRight} 1px ${mLeft};background:${bg};border-radius:${rLeft} ${rRight} ${rRight} ${rLeft};flex-shrink:0;cursor:${info?'pointer':'default'};"></div>`;
     });
@@ -3164,7 +3164,7 @@ function renderTimeline(){
     <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--dot-ok);margin-right:4px;"></span>Finalizado</span>
     <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--dot-andamento);margin-right:4px;"></span>Em andamento</span>
     <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--purple);margin-right:4px;"></span>Parado</span>
-    <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:repeating-linear-gradient(45deg, var(--gauge-track) 0 3px, var(--line) 3px 6px);margin-right:4px;"></span>Parada planejada</span>
+    <span><span style="display:inline-block;width:14px;height:10px;border-radius:3px;background:repeating-linear-gradient(45deg, var(--gauge-track) 0 2px, var(--purple) 2px 4px);margin-right:4px;"></span>Parada planejada</span>
     <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--gauge-track);margin-right:4px;"></span>Ocioso</span>
   </div>`;
 
