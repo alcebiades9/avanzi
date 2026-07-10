@@ -2630,6 +2630,14 @@ function parseMinutesOEE(timeStr){
   return (hMatch ? parseInt(hMatch[1])*60 : 0) + (mMatch ? parseInt(mMatch[1]) : 0);
 }
 
+function isPlanejada(obs){
+  return (obs||'').toString().trim().toUpperCase().startsWith('PLANEJADA');
+}
+
+function minsPlanejados(r){
+  return parseMinutesOEE(r['TEMPO_PARADO_PLANEJADO']);
+}
+
 function getOeeColor(pct){
   const s = getComputedStyle(document.documentElement);
   if(pct >= 85) return s.getPropertyValue('--ok').trim();
@@ -2699,6 +2707,7 @@ function computeParadaPareto(rows){
     const obsTxt = (r['OBS']||'').toString().trim();
     const paradaMins = parseMinutesOEE(r['TEMPO_PARADO']);
     if(!obsTxt || paradaMins <= 0) return;
+    if(isPlanejada(obsTxt)) return; // paradas planejadas nao entram no ranking
     const dataRaw = r['DATA'];
     const dataObj = dataRaw ? new Date(dataRaw) : null;
     const dataKey = dataObj ? dataObj.toISOString().slice(0,10) : 'sem-data-'+Math.random();
@@ -3022,10 +3031,19 @@ function renderTimeline(){
 
     let dtFim;
     if(st === 'FINALIZADO'){
-      const totalMins = parseMinutesOEE(r['Tempo_Total']);
-      const diasOcupados = totalMins > 0 ? Math.max(0, Math.ceil(totalMins/60/24) - 1) : 0;
-      dtFim = new Date(dtInicio);
-      dtFim.setDate(dtFim.getDate() + diasOcupados);
+      // Fim real do lote = Hora_Fim (cobre lotes que atravessaram fim de semana).
+      // Sem Hora_Fim, cai no calculo antigo por Tempo_Total.
+      const hf = r['Hora_Fim'] ? new Date(r['Hora_Fim']) : null;
+      if(hf && !isNaN(hf)){
+        dtFim = new Date(hf);
+        dtFim.setHours(0,0,0,0);
+        if(dtFim < dtInicio) dtFim = new Date(dtInicio);
+      } else {
+        const totalMins = parseMinutesOEE(r['Tempo_Total']);
+        const diasOcupados = totalMins > 0 ? Math.max(0, Math.ceil(totalMins/60/24) - 1) : 0;
+        dtFim = new Date(dtInicio);
+        dtFim.setDate(dtFim.getDate() + diasOcupados);
+      }
     } else if(st === 'EM ANDAMENTO' || st === 'PARADO!'){
       // Ainda não terminou: continua ocupando até hoje
       dtFim = hoje > dtInicio ? new Date(hoje) : new Date(dtInicio);
@@ -3040,10 +3058,13 @@ function renderTimeline(){
 
     const prioridade = st === 'PARADO!' ? 3 : st === 'EM ANDAMENTO' ? 2 : st === 'FINALIZADO' ? 1 : 0;
     const numeroOS = (r['Numero_OS']||'').toString().trim();
+    const planMinsLote = minsPlanejados(r);
     for(let d = new Date(inicioClip); d <= fimClip; d.setDate(d.getDate()+1)){
       const key = rNum + '|' + d.toISOString().slice(0,10);
+      const dow = d.getDay();
+      const planejada = planMinsLote > 0 && (dow === 0 || dow === 6);
       if(!porCelula[key] || prioridade > porCelula[key].prioridade){
-        porCelula[key] = { prioridade, status: st, produto, qty, obs, loteId, numeroOS, row: r };
+        porCelula[key] = { prioridade, status: st, produto, qty, obs, loteId, numeroOS, row: r, planejada };
       }
     }
   });
@@ -3076,7 +3097,9 @@ function renderTimeline(){
       const d = diasDoMes[i];
       const cor = corPorStatus(info ? info.status : '');
       const tooltip = info
-        ? `${d.toLocaleDateString('pt-BR')}: ${info.produto} (${info.qty}kg) - ${info.status}${info.obs ? ' - '+info.obs : ''}`
+        ? (info.planejada
+            ? `${d.toLocaleDateString('pt-BR')}: ${info.produto} (${info.qty}kg) - parada planejada`
+            : `${d.toLocaleDateString('pt-BR')}: ${info.produto} (${info.qty}kg) - ${info.status}${info.obs ? ' - '+info.obs : ''}`)
         : `${d.toLocaleDateString('pt-BR')}: sem produção`;
       // Se o dia anterior/seguinte é o MESMO lote, gruda sem espaço/borda no meio,
       // formando uma barra única — assim fica claro que é 1 lote de vários dias, não vários lotes
@@ -3088,7 +3111,10 @@ function renderTimeline(){
       const mRight = coladoNext ? '0px' : '1px';
       const rLeft = coladoPrev ? '0px' : '4px';
       const rRight = coladoNext ? '0px' : '4px';
-      html += `<div class="timeline-block" data-key="${rNum}|${d.toISOString().slice(0,10)}" title="${escapeAttr(tooltip)}" style="width:${cellSize-2}px;height:${cellSize-2}px;margin:1px ${mRight} 1px ${mLeft};background:${cor};border-radius:${rLeft} ${rRight} ${rRight} ${rLeft};flex-shrink:0;cursor:${info?'pointer':'default'};"></div>`;
+      const bg = (info && info.planejada)
+        ? `repeating-linear-gradient(45deg, var(--gauge-track) 0 3px, var(--line) 3px 6px)`
+        : cor;
+      html += `<div class="timeline-block" data-key="${rNum}|${d.toISOString().slice(0,10)}" title="${escapeAttr(tooltip)}" style="width:${cellSize-2}px;height:${cellSize-2}px;margin:1px ${mRight} 1px ${mLeft};background:${bg};border-radius:${rLeft} ${rRight} ${rRight} ${rLeft};flex-shrink:0;cursor:${info?'pointer':'default'};"></div>`;
     });
     html += `</div>`;
   }
@@ -3098,6 +3124,7 @@ function renderTimeline(){
     <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--dot-ok);margin-right:4px;"></span>Finalizado</span>
     <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--dot-andamento);margin-right:4px;"></span>Em andamento</span>
     <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--purple);margin-right:4px;"></span>Parado</span>
+    <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:repeating-linear-gradient(45deg, var(--gauge-track) 0 3px, var(--line) 3px 6px);margin-right:4px;"></span>Parada planejada</span>
     <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--gauge-track);margin-right:4px;"></span>Ocioso</span>
   </div>`;
 
@@ -3234,6 +3261,13 @@ function renderFichaCard(r){
       ${obsTxt ? `<div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">Motivo: ${escapeAttr(obsTxt)}</div>` : ''}
     </div>` : '';
 
+  const planMins = minsPlanejados(r);
+  const planejadaHtml = planMins > 0 ? `
+    <div style="margin-top:14px;padding:12px 14px;background:var(--gauge-track);border:1px dashed var(--line);border-radius:8px;">
+      <div style="font-size:12px;font-weight:600;color:var(--ink-soft);">\u23F8 Parada planejada: ${(planMins/60).toFixed(1)}h</div>
+      <div style="font-size:12px;color:var(--ink-faint);margin-top:2px;">N\u00E3o conta como perda no OEE (fim de semana, feriado ou manuten\u00E7\u00E3o programada).</div>
+    </div>` : '';
+
   const voltarBtn = window._fichaUltimaLista
     ? `<button id="fichaVoltarBtn" style="margin-bottom:12px;padding:8px 14px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--ink-soft);font-size:12px;cursor:pointer;">← Voltar pra lista</button>`
     : '';
@@ -3259,6 +3293,7 @@ function renderFichaCard(r){
         <div><div style="color:var(--ink-faint);font-size:11px;">TEMPO DE PRODUÇÃO</div><div style="font-family:'IBM Plex Mono';font-weight:600;word-break:break-word;">${escapeAttr(tempoTotal.toString())}</div></div>
       </div>
       ${paradaHtml}
+      ${planejadaHtml}
       <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--line);font-size:10px;color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;">
         <span>Avanzi Química — Ficha do Lote</span>
         <span>Gerado em ${new Date().toLocaleString('pt-BR')}</span>
@@ -3414,6 +3449,18 @@ function renderOEE(){
     <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--accent);margin-right:4px;"></span>60-84% Bom</span>
     <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--warn);margin-right:4px;"></span>&lt; 60% Precisa melhorar</span>
   </div>`;
+
+  const totalPlanMins = filtered.reduce((s,r) => s + minsPlanejados(r), 0);
+  if(totalPlanMins > 0){
+    html += `<div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px 24px;margin-top:24px;">
+      <h4 style="margin:0 0 4px;font-size:16px;">Paradas planejadas</h4>
+      <div style="font-family:'IBM Plex Mono';font-weight:600;font-size:24px;margin:6px 0 4px;">${(totalPlanMins/60).toFixed(1)}h</div>
+      <p style="color:var(--ink-faint);font-size:12px;margin:0;max-width:640px;line-height:1.5;">
+        Fim de semana, feriado e manuten\u00E7\u00E3o programada. <b>N\u00E3o afeta o OEE</b> \u2014 o reator n\u00E3o estava programado pra produzir.
+        Se esse n\u00FAmero crescer muito, \u00E9 sinal de capacidade ociosa dispon\u00EDvel.
+      </p>
+    </div>`;
+  }
 
   html += renderParadaPareto(filtered);
   html += renderMTBFMTTR(filtered);
