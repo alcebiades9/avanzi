@@ -1856,6 +1856,7 @@ function renderReactors(crpSheet, allRows, mrpItems){
   const doneProductsR = {};    // key → 'done'
   const stoppedProductsR = {}; // key → 'stopped'
   const obsProductsR = {};     // key → texto OBS
+  const rowProductsR = {};     // key → linha da planilha (pra abrir a ficha)
   if(allRows){
     allRows.forEach(r => {
       const st = (r['Status']||'').toString().trim().toUpperCase();
@@ -1868,6 +1869,7 @@ function renderReactors(crpSheet, allRows, mrpItems){
         stoppedProductsR[p] = true; // fallback por nome
         const obsTxt = (r['OBS']||'').toString().trim();
         if(obsTxt){ obsProductsR[key] = obsTxt; obsProductsR[p] = obsTxt; }
+        rowProductsR[key] = r; rowProductsR[p] = r;
       } else if(st === 'EM ANDAMENTO'){
         activeProductsR[key] = true;
         activeProductsR[p] = true; // fallback por nome
@@ -1911,6 +1913,14 @@ function renderReactors(crpSheet, allRows, mrpItems){
     return obsProductsR[key] || obsProductsR[p] || '';
   }
 
+  function getReactorRow(produto, qty){
+    const p = produto.toLowerCase().trim();
+    const key = makeKeyR(p, qty);
+    return rowProductsR[key] || rowProductsR[p] || null;
+  }
+
+  window._capRows = [];
+
   const reactorMaps = parseReactorProducts(rows);
   const productBuckets = buildReactorBuckets(reactorMaps, mrpItems || []);
   reactors.forEach((r, idx) => { r.products = productBuckets[idx] || []; });
@@ -1946,13 +1956,31 @@ function renderReactors(crpSheet, allRows, mrpItems){
               : isDone
               ? `<span title="Finalizado" style="width:9px;height:9px;border-radius:50%;background:var(--dot-ok);display:inline-block;flex-shrink:0;margin-right:5px;"></span>`
               : `<span title="Planejado" style="width:9px;height:9px;border-radius:50%;background:var(--dot-planejado);display:inline-block;flex-shrink:0;margin-right:5px;"></span>`;
-            const obsLine = (isStopped && obsTxt) ? `<div style="display:block;font-size:11px;color:var(--purple);margin-left:14px;word-break:break-word;">⏸ ${obsTxt}</div>` : '';
+            let obsLine = '';
+            if(isStopped && obsTxt){
+              const rowObs = getReactorRow(p.produto, p.qty);
+              const detTxt = rowObs ? (rowObs['DETALHE_PARADA']||'').toString().trim() : '';
+              if(detTxt){
+                const idx = window._capRows.push({ row: rowObs, produto: p.produto, numeroOS: (rowObs['Numero_OS']||'').toString().trim() }) - 1;
+                obsLine = `<div class="cap-obs-link" data-idx="${idx}" title="Clique para ver os detalhes" style="display:block;font-size:11px;color:var(--purple);margin-left:14px;word-break:break-word;cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px;">⏸ ${obsTxt} ℹ️</div>`;
+              } else {
+                obsLine = `<div style="display:block;font-size:11px;color:var(--purple);margin-left:14px;word-break:break-word;">⏸ ${obsTxt}</div>`;
+              }
+            }
             return `<div style="display:block;"><div style="display:flex;align-items:center;flex-wrap:wrap;">${dot}<span style="word-break:break-word;">${p.produto}</span> <span style="margin-left:auto;">${fmtKg(p.qty)} kg</span></div>${obsLine}</div>`;
           }).join('')}</div>` : '<div class="reactor-products empty">Nada planejado</div>'}
         </div>
       </div>
     `;
   }).join('');
+
+  el.querySelectorAll('.cap-obs-link').forEach(node => {
+    node.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const info = window._capRows[Number(node.dataset.idx)];
+      if(info) irParaFichaDoLote(info);
+    });
+  });
 }
 
 // ── MODAL RELATÓRIO SEMANAL ─────────────────────────────────────────────────
