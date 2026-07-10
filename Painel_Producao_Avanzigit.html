@@ -3114,7 +3114,12 @@ function renderTimeline(){
   html += `<div style="display:flex;">`;
   html += `<div style="width:${labelWidth}px;flex-shrink:0;"></div>`;
   diasDoMes.forEach(d => {
-    html += `<div style="width:${cellSize}px;flex-shrink:0;text-align:center;font-size:9px;color:var(--ink-faint);">${d.getDate()}</div>`;
+    const dow = d.getDay();
+    const fds = (dow === 0 || dow === 6);
+    const label = dow === 6 ? 'Sáb' : dow === 0 ? 'Dom' : d.getDate();
+    const cor = fds ? 'var(--ink-soft)' : 'var(--ink-faint)';
+    const peso = fds ? '600' : '400';
+    html += `<div style="width:${cellSize}px;flex-shrink:0;text-align:center;font-size:9px;font-weight:${peso};color:${cor};">${label}</div>`;
   });
   html += `</div>`;
 
@@ -3137,14 +3142,19 @@ function renderTimeline(){
       const next = celulas[i+1];
       const coladoPrev = info && prev && prev.loteId === info.loteId;
       const coladoNext = info && next && next.loteId === info.loteId;
-      const mLeft = coladoPrev ? '0px' : '1px';
-      const mRight = coladoNext ? '0px' : '1px';
+      // A margem removida nos blocos grudados precisa virar largura, senao cada
+      // dia colado encolhe 2px e o desalinhamento acumula ao longo do mes.
+      const mLeftPx = coladoPrev ? 0 : 1;
+      const mRightPx = coladoNext ? 0 : 1;
+      const mLeft = mLeftPx + 'px';
+      const mRight = mRightPx + 'px';
+      const larguraCel = cellSize - mLeftPx - mRightPx;
       const rLeft = coladoPrev ? '0px' : '4px';
       const rRight = coladoNext ? '0px' : '4px';
       const bg = (info && info.planejada)
         ? `repeating-linear-gradient(45deg, var(--gauge-track) 0 3px, var(--line) 3px 6px)`
         : cor;
-      html += `<div class="timeline-block" data-key="${rNum}|${d.toISOString().slice(0,10)}" title="${escapeAttr(tooltip)}" style="width:${cellSize-2}px;height:${cellSize-2}px;margin:1px ${mRight} 1px ${mLeft};background:${bg};border-radius:${rLeft} ${rRight} ${rRight} ${rLeft};flex-shrink:0;cursor:${info?'pointer':'default'};"></div>`;
+      html += `<div class="timeline-block" data-key="${rNum}|${d.toISOString().slice(0,10)}" title="${escapeAttr(tooltip)}" style="width:${larguraCel}px;height:${cellSize-2}px;margin:1px ${mRight} 1px ${mLeft};background:${bg};border-radius:${rLeft} ${rRight} ${rRight} ${rLeft};flex-shrink:0;cursor:${info?'pointer':'default'};"></div>`;
     });
     html += `</div>`;
   }
