@@ -3058,13 +3058,14 @@ function renderTimeline(){
 
     const prioridade = st === 'PARADO!' ? 3 : st === 'EM ANDAMENTO' ? 2 : st === 'FINALIZADO' ? 1 : 0;
     const numeroOS = (r['Numero_OS']||'').toString().trim();
+    const temDetalhe = !!(r['DETALHE_PARADA']||'').toString().trim();
     const planMinsLote = minsPlanejados(r);
     for(let d = new Date(inicioClip); d <= fimClip; d.setDate(d.getDate()+1)){
       const key = rNum + '|' + d.toISOString().slice(0,10);
       const dow = d.getDay();
       const planejada = planMinsLote > 0 && (dow === 0 || dow === 6);
       if(!porCelula[key] || prioridade > porCelula[key].prioridade){
-        porCelula[key] = { prioridade, status: st, produto, qty, obs, loteId, numeroOS, row: r, planejada };
+        porCelula[key] = { prioridade, status: st, produto, qty, obs, loteId, numeroOS, row: r, planejada, temDetalhe };
       }
     }
   });
@@ -3096,10 +3097,11 @@ function renderTimeline(){
     celulas.forEach((info, i) => {
       const d = diasDoMes[i];
       const cor = corPorStatus(info ? info.status : '');
+      const dica = info && info.temDetalhe ? '\n(clique para ver os detalhes)' : '';
       const tooltip = info
         ? (info.planejada
-            ? `${d.toLocaleDateString('pt-BR')}: ${info.produto} (${info.qty}kg) - parada planejada`
-            : `${d.toLocaleDateString('pt-BR')}: ${info.produto} (${info.qty}kg) - ${info.status}${info.obs ? ' - '+info.obs : ''}`)
+            ? `${d.toLocaleDateString('pt-BR')}: ${info.produto} (${info.qty}kg) - parada planejada${dica}`
+            : `${d.toLocaleDateString('pt-BR')}: ${info.produto} (${info.qty}kg) - ${info.status}${info.obs ? ' - '+info.obs : ''}${dica}`)
         : `${d.toLocaleDateString('pt-BR')}: sem produção`;
       // Se o dia anterior/seguinte é o MESMO lote, gruda sem espaço/borda no meio,
       // formando uma barra única — assim fica claro que é 1 lote de vários dias, não vários lotes
@@ -3255,17 +3257,25 @@ function renderFichaCard(r){
   } else {
     custoTxt = custoRaw.toString(); // ex: "⚠ OS de envase"
   }
+  const detalheTxt = (r['DETALHE_PARADA']||'').toString().trim();
+  const detalheHtml = detalheTxt
+    ? `<div style="font-size:12px;color:var(--ink-soft);margin-top:8px;padding-top:8px;border-top:1px solid var(--line);line-height:1.5;">${escapeAttr(detalheTxt)}</div>`
+    : '';
+
   const paradaHtml = paradaMins > 0 ? `
     <div style="margin-top:14px;padding:12px 14px;background:rgba(167,139,250,0.12);border:1px solid var(--purple);border-radius:8px;">
       <div style="font-size:12px;font-weight:600;color:var(--purple);">⚠ Parada registrada: ${(paradaMins/60).toFixed(1)}h</div>
       ${obsTxt ? `<div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">Motivo: ${escapeAttr(obsTxt)}</div>` : ''}
+      ${detalheHtml}
     </div>` : '';
 
   const planMins = minsPlanejados(r);
   const planejadaHtml = planMins > 0 ? `
     <div style="margin-top:14px;padding:12px 14px;background:var(--gauge-track);border:1px dashed var(--line);border-radius:8px;">
       <div style="font-size:12px;font-weight:600;color:var(--ink-soft);">\u23F8 Parada planejada: ${(planMins/60).toFixed(1)}h</div>
+      ${obsTxt && isPlanejada(obsTxt) ? `<div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">Motivo: ${escapeAttr(obsTxt)}</div>` : ''}
       <div style="font-size:12px;color:var(--ink-faint);margin-top:2px;">N\u00E3o conta como perda no OEE (fim de semana, feriado ou manuten\u00E7\u00E3o programada).</div>
+      ${detalheHtml}
     </div>` : '';
 
   const voltarBtn = window._fichaUltimaLista
