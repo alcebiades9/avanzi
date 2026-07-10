@@ -3306,6 +3306,16 @@ function renderFichaCard(r){
       ${detalheHtml}
     </div>` : '';
 
+  // Lote ainda PARADO!: P e V so sao preenchidas quando a parada terminar,
+  // entao mostra o motivo/detalhe numa caixa propria enquanto isso.
+  const paradaAbertaHtml = (paradaMins <= 0 && planMins <= 0 && (obsTxt || detalheTxt)) ? `
+    <div style="margin-top:14px;padding:12px 14px;background:rgba(167,139,250,0.12);border:1px solid var(--purple);border-radius:8px;">
+      <div style="font-size:12px;font-weight:600;color:var(--purple);">\u23F8 Parada em andamento${isPlanejada(obsTxt) ? ' (planejada)' : ''}</div>
+      ${obsTxt ? `<div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">Motivo: ${escapeAttr(obsTxt)}</div>` : ''}
+      <div style="font-size:12px;color:var(--ink-faint);margin-top:2px;">O tempo parado sera contabilizado quando o lote for retomado.</div>
+      ${detalheHtml}
+    </div>` : '';
+
   const voltarBtn = window._fichaUltimaLista
     ? `<button id="fichaVoltarBtn" style="margin-bottom:12px;padding:8px 14px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--ink-soft);font-size:12px;cursor:pointer;">← Voltar pra lista</button>`
     : '';
@@ -3332,6 +3342,7 @@ function renderFichaCard(r){
       </div>
       ${paradaHtml}
       ${planejadaHtml}
+      ${paradaAbertaHtml}
       <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--line);font-size:10px;color:var(--ink-faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;">
         <span>Avanzi Química — Ficha do Lote</span>
         <span>Gerado em ${new Date().toLocaleString('pt-BR')}</span>
