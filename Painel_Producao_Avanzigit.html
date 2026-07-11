@@ -3119,7 +3119,7 @@ function renderTimeline(){
     const label = dow === 6 ? 'Sáb' : dow === 0 ? 'Dom' : d.getDate();
     const cor = fds ? 'var(--ink-soft)' : 'var(--ink-faint)';
     const peso = fds ? '600' : '400';
-    html += `<div style="width:${cellSize}px;min-width:${cellSize}px;max-width:${cellSize}px;flex-shrink:0;text-align:center;font-size:9px;font-weight:${peso};color:${cor};overflow:hidden;">${label}</div>`;
+    html += `<div style="width:${cellSize}px;flex-shrink:0;text-align:center;font-size:9px;font-weight:${peso};color:${cor};">${label}</div>`;
   });
   html += `</div>`;
 
