@@ -3109,55 +3109,49 @@ function renderTimeline(){
   const labelWidth = 130;
 
   let html = `<div style="font-size:13px;font-weight:600;">${mesLabel}</div>`;
-  html += `<div style="min-width:${labelWidth + diasDoMes.length*cellSize}px;">`;
+  const nDias = diasDoMes.length;
+  html += `<div style="display:grid;grid-template-columns:${labelWidth}px repeat(${nDias}, ${cellSize}px);row-gap:2px;min-width:${labelWidth + nDias*cellSize}px;">`;
 
-  html += `<div style="display:flex;">`;
-  html += `<div style="width:${labelWidth}px;flex-shrink:0;"></div>`;
+  // --- Header ---
+  html += `<div></div>`;
   diasDoMes.forEach(d => {
     const dow = d.getDay();
     const fds = (dow === 0 || dow === 6);
-    const label = dow === 6 ? 'Sáb' : dow === 0 ? 'Dom' : d.getDate();
+    const label = dow === 6 ? 'S\u00e1b' : dow === 0 ? 'Dom' : d.getDate();
     const cor = fds ? 'var(--ink-soft)' : 'var(--ink-faint)';
     const peso = fds ? '600' : '400';
-    html += `<div style="width:${cellSize}px;flex-shrink:0;text-align:center;font-size:9px;font-weight:${peso};color:${cor};">${label}</div>`;
+    html += `<div style="text-align:center;font-size:9px;font-weight:${peso};color:${cor};overflow:hidden;line-height:${cellSize}px;">${label}</div>`;
   });
-  html += `</div>`;
 
+  // --- Reactor rows ---
   for(let rNum=1; rNum<=4; rNum++){
     const celulas = diasDoMes.map(d => porCelula[rNum + '|' + d.toISOString().slice(0,10)] || null);
-    html += `<div style="display:flex;align-items:center;margin-top:2px;">`;
-    html += `<div style="width:${labelWidth}px;flex-shrink:0;font-size:12px;font-weight:600;">${REACTOR_NAMES[rNum]||'Reator '+rNum}</div>`;
+    html += `<div style="font-size:12px;font-weight:600;display:flex;align-items:center;">${REACTOR_NAMES[rNum]||'Reator '+rNum}</div>`;
     celulas.forEach((info, i) => {
       const d = diasDoMes[i];
       const cor = corPorStatus(info ? info.status : '');
-      const dica = info && info.temDetalhe ? '\n(clique para ver os detalhes)' : '';
+      const dica = info && info.temDetalhe ? '\\n(clique para ver os detalhes)' : '';
       const tooltip = info
         ? (info.planejada
             ? `${d.toLocaleDateString('pt-BR')}: ${info.produto} (${info.qty}kg) - parada planejada${dica}`
             : `${d.toLocaleDateString('pt-BR')}: ${info.produto} (${info.qty}kg) - ${info.status}${info.obs ? ' - '+info.obs : ''}${dica}`)
-        : `${d.toLocaleDateString('pt-BR')}: sem produção`;
-      // Se o dia anterior/seguinte é o MESMO lote, gruda sem espaço/borda no meio,
-      // formando uma barra única — assim fica claro que é 1 lote de vários dias, não vários lotes
+        : `${d.toLocaleDateString('pt-BR')}: sem produ\u00e7\u00e3o`;
       const prev = celulas[i-1];
       const next = celulas[i+1];
       const coladoPrev = info && prev && prev.loteId === info.loteId;
       const coladoNext = info && next && next.loteId === info.loteId;
-      // A margem removida nos blocos grudados precisa virar largura, senao cada
-      // dia colado encolhe 2px e o desalinhamento acumula ao longo do mes.
-      const mLeftPx = coladoPrev ? 0 : 1;
-      const mRightPx = coladoNext ? 0 : 1;
-      const mLeft = mLeftPx + 'px';
-      const mRight = mRightPx + 'px';
-      const larguraCel = cellSize - mLeftPx - mRightPx;
+      const padL = coladoPrev ? 0 : 1;
+      const padR = coladoNext ? 0 : 1;
       const rLeft = coladoPrev ? '0px' : '4px';
       const rRight = coladoNext ? '0px' : '4px';
       const bg = (info && info.planejada)
         ? `repeating-linear-gradient(45deg, var(--gauge-track) 0 3px, var(--purple) 3px 6px)`
         : cor;
-      html += `<div class="timeline-block" data-key="${rNum}|${d.toISOString().slice(0,10)}" title="${escapeAttr(tooltip)}" style="width:${larguraCel}px;height:${cellSize-2}px;margin:1px ${mRight} 1px ${mLeft};background:${bg};border-radius:${rLeft} ${rRight} ${rRight} ${rLeft};flex-shrink:0;cursor:${info?'pointer':'default'};"></div>`;
+      html += `<div class="timeline-block" data-key="${rNum}|${d.toISOString().slice(0,10)}" title="${escapeAttr(tooltip)}" style="padding:1px ${padR}px 1px ${padL}px;cursor:${info?'pointer':'default'};"><div style="width:100%;height:${cellSize-2}px;background:${bg};border-radius:${rLeft} ${rRight} ${rRight} ${rLeft};"></div></div>`;
     });
-    html += `</div>`;
   }
+  html += `</div>`;
+
   html += `</div>`;
 
   html += `<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--ink-soft);margin-top:12px;">
