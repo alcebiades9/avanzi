@@ -3024,6 +3024,7 @@ function renderTimeline(){
     for(let i=59; i>=0; i--){
       const d = new Date(hoje);
       d.setDate(d.getDate()-i);
+      d.setHours(0,0,0,0);
       diasDoMes.push(d);
     }
     mesLabel = 'Últimos 60 dias';
