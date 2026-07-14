@@ -3502,18 +3502,6 @@ function renderOEE(){
     <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--warn);margin-right:4px;"></span>&lt; 60% Precisa melhorar</span>
   </div>`;
 
-  const totalPlanMins = filtered.reduce((s,r) => s + minsPlanejados(r), 0);
-  if(totalPlanMins > 0){
-    html += `<div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px 24px;margin-top:24px;">
-      <h4 style="margin:0 0 4px;font-size:16px;">Paradas planejadas</h4>
-      <div style="font-family:'IBM Plex Mono';font-weight:600;font-size:24px;margin:6px 0 4px;">${(totalPlanMins/60).toFixed(1)}h</div>
-      <p style="color:var(--ink-faint);font-size:12px;margin:0;max-width:640px;line-height:1.5;">
-        Fim de semana, feriado e manuten\u00E7\u00E3o programada. <b>N\u00E3o afeta o OEE</b> \u2014 o reator n\u00E3o estava programado pra produzir.
-        Se esse n\u00FAmero crescer muito, \u00E9 sinal de capacidade ociosa dispon\u00EDvel.
-      </p>
-    </div>`;
-  }
-
   html += renderParadaPareto(filtered);
   html += renderMTBFMTTR(filtered);
   html += renderOEEChart(withReactor, sortedMonths, padroes);
