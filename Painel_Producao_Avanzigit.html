@@ -428,6 +428,9 @@
       <span class="si-label">Alertas de matéria-prima</span>
       <span class="si-toggle" id="alertasStatus">Desativado</span>
     </button>
+    <div id="alertaAvisoPush" style="background:rgba(240,146,74,0.12);border:1px solid rgba(240,146,74,0.3);border-radius:8px;padding:10px 12px;margin:8px 0 0;font-size:12px;color:var(--ink);line-height:1.5;display:none;">
+      ⚠️ <strong>Atualização de segurança:</strong> as chaves de notificação foram renovadas. Se você já tinha alertas ativados, <strong>desative e reative</strong> para continuar recebendo notificações no celular/PC.
+    </div>
   </div>
   <div class="sidebar-section">
     <div class="sidebar-section-label">Links</div>
@@ -3632,6 +3635,8 @@ document.getElementById('timelineMonthFilter')?.addEventListener('change', () =>
           // envia a inscricao pro Google (Apps Script). no-cors = so envia, nao le resposta.
           await fetch(URL_INSCRICOES, { method: "POST", mode: "no-cors", body: JSON.stringify(sub) });
           atualizarBotaoAlertas();
+          const aviso = document.getElementById("alertaAvisoPush");
+          if (aviso) aviso.style.display = "none";
           alert("Alertas ativados! Voce recebera avisos de materia-prima.");
         } catch (e) {
           console.error(e);
@@ -3710,6 +3715,29 @@ document.getElementById('timelineMonthFilter')?.addEventListener('change', () =>
       window.addEventListener("load", () => setTimeout(() => {
         atualizarBotaoAlertas();
         mostrarDicaAlertas();
+        // Mostra aviso de reativação se o usuário tinha push antigo
+        (async () => {
+          try {
+            const reg = await navigator.serviceWorker.ready;
+            const sub = await reg.pushManager.getSubscription();
+            const aviso = document.getElementById("alertaAvisoPush");
+            if (!aviso) return;
+            // Mostra se: tem subscription ativa MAS com chave antiga, OU se já viu permissão granted mas não tem sub
+            if (Notification.permission === "granted" && !sub) {
+              aviso.style.display = "block";
+            } else if (sub) {
+              // Checa se a chave bate com a nova
+              const key = sub.options && sub.options.applicationServerKey;
+              if (key) {
+                const arr = new Uint8Array(key);
+                const b64 = btoa(String.fromCharCode(...arr)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+                if (b64 !== VAPID_PUBLICA) {
+                  aviso.style.display = "block";
+                }
+              }
+            }
+          } catch(e) {}
+        })();
       }, 1500));
     </script>
 </body>
