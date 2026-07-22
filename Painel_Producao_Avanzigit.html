@@ -487,8 +487,8 @@
       </p>
     </div>
 
-    <!-- CTA Button — window.open força abertura no navegador do sistema, não dentro do PWA -->
-    <button onclick="window.open('https://producao-avanzi.onrender.com/dashboard/','_system')" style="
+    <!-- CTA Button — força abertura no navegador do sistema -->
+    <button onclick="abrirNoNavegador()" style="
       display:inline-flex; align-items:center; gap:8px;
       background:linear-gradient(135deg,#f0924a,#d97706);
       color:#fff; font-weight:600; font-size:15px;
@@ -507,6 +507,18 @@
       </svg>
       Abrir no Navegador
     </button>
+    <script>
+    function abrirNoNavegador(){
+      var url='https://producao-avanzi.onrender.com/dashboard/';
+      if(/Android/i.test(navigator.userAgent)){
+        // Intent URL força abertura no Chrome/navegador padrão do Android
+        window.location='intent://producao-avanzi.onrender.com/dashboard/#Intent;scheme=https;action=android.intent.action.VIEW;end';
+        setTimeout(function(){window.open(url,'_blank');},500);
+      } else {
+        window.open(url,'_blank');
+      }
+    }
+    </script>
 
     <!-- Secondary link -->
     <div style="margin-top:20px;">
