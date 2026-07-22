@@ -458,20 +458,37 @@
       font-size:22px; font-weight:700;
       margin:0 0 12px;
       letter-spacing:-0.3px;
-    ">Painel Migrado!</h2>
+    ">Temos um App Novo!</h2>
 
     <!-- Message -->
     <p style="
       color:#a0a8b0;
       font-size:15px; line-height:1.6;
-      margin:0 0 32px;
+      margin:0 0 12px;
     ">
       Este painel <strong style="color:#e0e0e0;">não está mais sendo atualizado</strong>.<br>
-      Agora temos um sistema novo, mais completo e em tempo real.
+      Agora temos um app próprio, mais completo e em tempo real.
     </p>
 
+    <!-- Install instructions -->
+    <div style="
+      background:rgba(240,146,74,0.08);
+      border:1px solid rgba(240,146,74,0.18);
+      border-radius:12px;
+      padding:14px 18px;
+      margin:0 0 28px;
+      text-align:left;
+    ">
+      <p style="color:#e0e0e0;font-size:13px;margin:0 0 8px;font-weight:600;">Como instalar:</p>
+      <p style="color:#a0a8b0;font-size:13px;line-height:1.7;margin:0;">
+        1. Clique no botão abaixo para abrir o app<br>
+        2. No navegador, clique em <strong style="color:#e0e0e0;">⋮</strong> (menu) ou <strong style="color:#e0e0e0;">🔽</strong> na barra de endereço<br>
+        3. Selecione <strong style="color:#e0e0e0;">"Instalar aplicativo"</strong>
+      </p>
+    </div>
+
     <!-- CTA Button -->
-    <a href="https://producao-avanzi.onrender.com/dashboard/" style="
+    <a href="https://producao-avanzi.onrender.com/dashboard/" target="_blank" style="
       display:inline-flex; align-items:center; gap:8px;
       background:linear-gradient(135deg,#f0924a,#d97706);
       color:#fff; font-weight:600; font-size:15px;
@@ -483,9 +500,11 @@
     " onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(240,146,74,0.45)'"
        onmouseout="this.style.transform='';this.style.boxShadow='0 4px 15px rgba(240,146,74,0.35)'">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M5 12h14"/><path d="M12 5l7 7-7 7"/>
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
       </svg>
-      Acessar Novo Painel
+      Abrir e Instalar o App
     </a>
 
     <!-- Secondary link -->
