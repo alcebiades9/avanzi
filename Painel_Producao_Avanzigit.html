@@ -470,8 +470,46 @@
       Agora temos um app próprio, mais completo e em tempo real.
     </p>
 
-    <!-- Install instructions -->
-    <div style="
+    <!-- Message -->
+    <p style="
+      color:#a0a8b0;
+      font-size:15px; line-height:1.6;
+      margin:0 0 12px;
+    ">
+      Este painel <strong style="color:#e0e0e0;">não está mais sendo atualizado</strong>.<br>
+      Agora temos um app próprio, mais completo e em tempo real.
+    </p>
+
+    <!-- Instruções dinâmicas (PWA standalone vs navegador) -->
+    <div id="instrucoes-pwa" style="display:none;
+      background:rgba(240,146,74,0.08);
+      border:1px solid rgba(240,146,74,0.18);
+      border-radius:12px;
+      padding:14px 18px;
+      margin:0 0 28px;
+      text-align:left;
+    ">
+      <p style="color:#e0e0e0;font-size:13px;margin:0 0 8px;font-weight:600;">Como trocar para o app novo:</p>
+      <p style="color:#a0a8b0;font-size:13px;line-height:1.8;margin:0;">
+        1. <strong style="color:#e0e0e0;">Desinstale este app</strong> — segure o ícone na tela inicial → Desinstalar<br>
+        2. Abra o <strong style="color:#e0e0e0;">Chrome</strong> e acesse:
+      </p>
+      <p style="
+        margin:10px 0 0;
+        padding:10px 14px;
+        background:rgba(255,255,255,0.06);
+        border-radius:8px;
+        font-family:'IBM Plex Mono',monospace;
+        font-size:13px;
+        color:#f0924a;
+        word-break:break-all;
+        user-select:all;
+        -webkit-user-select:all;
+      ">producao-avanzi.onrender.com</p>
+      <p style="color:#6b7580;font-size:11px;margin:6px 0 0;">Toque no link acima para copiar</p>
+    </div>
+
+    <div id="instrucoes-navegador" style="display:none;
       background:rgba(240,146,74,0.08);
       border:1px solid rgba(240,146,74,0.18);
       border-radius:12px;
@@ -482,20 +520,19 @@
       <p style="color:#e0e0e0;font-size:13px;margin:0 0 8px;font-weight:600;">Como instalar:</p>
       <p style="color:#a0a8b0;font-size:13px;line-height:1.7;margin:0;">
         1. Clique no botão abaixo para abrir o app<br>
-        2. No navegador, clique em <strong style="color:#e0e0e0;">⋮</strong> (menu) ou <strong style="color:#e0e0e0;">🔽</strong> na barra de endereço<br>
+        2. No navegador, clique em <strong style="color:#e0e0e0;">⋮</strong> (menu)<br>
         3. Selecione <strong style="color:#e0e0e0;">"Instalar aplicativo"</strong>
       </p>
     </div>
 
-    <!-- CTA Button — força abertura no navegador do sistema -->
-    <button onclick="abrirNoNavegador()" style="
-      display:inline-flex; align-items:center; gap:8px;
+    <!-- CTA Button (só aparece no navegador) -->
+    <a id="btn-abrir" href="https://producao-avanzi.onrender.com/dashboard/" target="_blank" rel="noopener" style="
+      display:none; align-items:center; justify-content:center; gap:8px;
       background:linear-gradient(135deg,#f0924a,#d97706);
       color:#fff; font-weight:600; font-size:15px;
       padding:14px 32px;
-      border:none; cursor:pointer;
       border-radius:12px;
-      font-family:'IBM Plex Sans','Segoe UI',sans-serif;
+      text-decoration:none;
       box-shadow:0 4px 15px rgba(240,146,74,0.35);
       transition:transform .15s, box-shadow .15s;
     " onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(240,146,74,0.45)'"
@@ -505,19 +542,39 @@
         <polyline points="15 3 21 3 21 9"/>
         <line x1="10" y1="14" x2="21" y2="3"/>
       </svg>
-      Abrir no Navegador
+      Abrir Novo Painel
+    </a>
+
+    <!-- Botão copiar URL (só aparece dentro do PWA) -->
+    <button id="btn-copiar" onclick="navigator.clipboard.writeText('https://producao-avanzi.onrender.com').then(function(){document.getElementById('btn-copiar').textContent='✓ Link copiado!';setTimeout(function(){document.getElementById('btn-copiar').innerHTML='<svg width=18 height=18 viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;2.5&quot; stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot;><rect x=&quot;9&quot; y=&quot;9&quot; width=&quot;13&quot; height=&quot;13&quot; rx=&quot;2&quot; ry=&quot;2&quot;/><path d=&quot;M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1&quot;/></svg> Copiar Link';},2000);})" style="
+      display:none; align-items:center; justify-content:center; gap:8px;
+      background:linear-gradient(135deg,#f0924a,#d97706);
+      color:#fff; font-weight:600; font-size:15px;
+      padding:14px 32px;
+      width:100%;
+      border:none; cursor:pointer;
+      border-radius:12px;
+      font-family:'IBM Plex Sans','Segoe UI',sans-serif;
+      box-shadow:0 4px 15px rgba(240,146,74,0.35);
+    ">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+      </svg>
+      Copiar Link
     </button>
+
     <script>
-    function abrirNoNavegador(){
-      var url='https://producao-avanzi.onrender.com/dashboard/';
-      if(/Android/i.test(navigator.userAgent)){
-        // Intent URL força abertura no Chrome/navegador padrão do Android
-        window.location='intent://producao-avanzi.onrender.com/dashboard/#Intent;scheme=https;action=android.intent.action.VIEW;end';
-        setTimeout(function(){window.open(url,'_blank');},500);
+    (function(){
+      var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+      if(isStandalone){
+        document.getElementById('instrucoes-pwa').style.display='block';
+        document.getElementById('btn-copiar').style.display='inline-flex';
       } else {
-        window.open(url,'_blank');
+        document.getElementById('instrucoes-navegador').style.display='block';
+        document.getElementById('btn-abrir').style.display='inline-flex';
       }
-    }
+    })();
     </script>
 
     <!-- Secondary link -->
